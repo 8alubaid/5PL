@@ -38,7 +38,16 @@
   font-weight: 400;
 }
 .pr-wrap { max-width: 780px; margin: 0 auto; }
-.pr-center-screen { min-height: 70vh; display:flex; align-items:center; justify-content:center; }
+.pr-center-screen { min-height: 70vh; display:flex; align-items:center; justify-content:center; padding: 10px; }
+.pr-login-card { width:100%; max-width: 480px; padding: 32px 26px; }
+.pr-login-card .pr-title { font-size: 30px; margin-bottom: 22px !important; text-align:center; }
+.pr-login-card .pr-tabs { margin-bottom: 22px; padding: 7px; }
+.pr-login-card .pr-tab { padding: 16px 10px; font-size: 17px; border-radius: 12px; }
+.pr-login-card .pr-label { font-size: 15px; margin-bottom: 8px; }
+.pr-login-card .pr-input { padding: 15px 16px; font-size: 17px; border-radius: 12px; margin-bottom: 16px; }
+.pr-login-card .pr-btn { width:100%; padding: 16px 20px; font-size: 17px; border-radius: 14px; }
+.pr-login-card .pr-hint { font-size: 14px; margin-top: 10px; }
+.pr-login-card .pr-error { font-size: 14px; }
 
 /* Header */
 .pr-header {
@@ -226,10 +235,14 @@
     return rounds.length ? rounds[rounds.length-1].id : null;
   }
 
-  function isLocked(match){
-    if(match.finished) return true;
-    if(!match.kickoff) return false;
-    return new Date() >= new Date(match.kickoff);
+  function earliestKickoff(rnd){
+    const times = rnd.matches.filter(m => m.kickoff).map(m => new Date(m.kickoff).getTime());
+    return times.length ? Math.min(...times) : null;
+  }
+  function isRoundLocked(rnd){
+    const first = earliestKickoff(rnd);
+    if(first == null) return false;
+    return new Date().getTime() >= first;
   }
 
   function calcMatchPoints(pred, m){
@@ -296,9 +309,9 @@
 
   function renderLogin(){
     root.innerHTML = `
-      <div class="pr-center-screen"><div class="pr-card" style="width:100%;max-width:420px">
-        <div class="pr-title" style="margin-bottom:16px">${toAr(esc(config.title))} 🏆</div>
-        <div class="pr-tabs" style="margin-bottom:16px">
+      <div class="pr-center-screen"><div class="pr-card pr-login-card">
+        <div class="pr-title">${toAr(esc(config.title))} 🏆</div>
+        <div class="pr-tabs">
           <button class="pr-tab ${loginMode!=='admin'?'active':''}" onclick="prSetLoginMode('player')">لاعب</button>
           <button class="pr-tab ${loginMode==='admin'?'active':''}" onclick="prSetLoginMode('admin')">المنظم</button>
         </div>
@@ -314,27 +327,45 @@
     if(loginMode === 'admin'){
       body.innerHTML = `
         <label class="pr-label">الرمز السري للمنظم</label>
-        <input class="pr-input" id="lg-pin" type="password" style="margin-bottom:12px">
-        <button class="pr-btn" style="width:100%" onclick="prAdminLogin()">دخول لوحة التحكم</button>`;
+        <input class="pr-input" id="lg-pin" type="password" inputmode="numeric">
+        <button class="pr-btn" onclick="prAdminLogin()">دخول لوحة التحكم</button>`;
     } else {
       body.innerHTML = `
         <label class="pr-label">بريدك الإلكتروني</label>
-        <input class="pr-input" id="lg-email" type="email" placeholder="الإيميل اللي سجّلك فيه المنظم" style="margin-bottom:14px">
-        <button class="pr-btn" style="width:100%" onclick="prPlayerLogin()">دخول</button>`;
+        <input class="pr-input" id="lg-email" type="email" placeholder="الإيميل اللي سجّلك فيه المنظم">
+        <label class="pr-label">الرمز السري الخاص فيك</label>
+        <input class="pr-input" id="lg-pin" type="password" inputmode="numeric" placeholder="الرمز اللي عطاك إياه المنظم">
+        <button class="pr-btn" onclick="prPlayerLogin()">دخول</button>`;
     }
+  }
+  function saveSession(){
+    try { localStorage.setItem('pr_session', JSON.stringify(session)); } catch(e){}
+  }
+  function loadSession(){
+    try {
+      const raw = localStorage.getItem('pr_session');
+      if(!raw) return null;
+      return JSON.parse(raw);
+    } catch(e){ return null; }
+  }
+  function clearSession(){
+    try { localStorage.removeItem('pr_session'); } catch(e){}
   }
   window.prAdminLogin = function(){
     const pin = document.getElementById('lg-pin').value.trim();
-    if(pin === config.adminPin){ session.isAdmin = true; activeTab = 'admin'; render(); }
+    if(pin === config.adminPin){ session.isAdmin = true; activeTab = 'admin'; saveSession(); render(); }
     else document.getElementById('login-err').textContent = 'الرمز غير صحيح.';
   };
   window.prPlayerLogin = async function(){
     const email = document.getElementById('lg-email').value.trim().toLowerCase();
-    if(!email){ document.getElementById('login-err').textContent = 'عبّي إيميلك.'; return; }
+    const pin = document.getElementById('lg-pin').value.trim();
+    if(!email || !pin){ document.getElementById('login-err').textContent = 'عبّي الإيميل والرمز السري.'; return; }
     const existing = players.find(p => (p.email || '').trim().toLowerCase() === email);
     if(!existing){ document.getElementById('login-err').textContent = 'هذا الإيميل غير مسجل — خلّي المنظم يضيفك من لوحة التحكم.'; return; }
+    if((existing.pin || '') !== pin){ document.getElementById('login-err').textContent = 'الرمز السري غير صحيح.'; return; }
     session.playerId = existing.id; session.playerName = existing.name;
     activeTab = 'predict';
+    saveSession();
     render();
   };
 
@@ -360,29 +391,58 @@
     else if(activeTab === 'admin') renderAdminTab(content);
   }
   window.prSetTab = function(t){ activeTab = t; if(t !== 'admin') selectedRoundId = selectedRoundId || findOpenRoundId(); render(); };
-  window.prLogout = function(){ session = { playerId:null, playerName:null, isAdmin:false }; loginMode='player'; render(); };
+  window.prLogout = function(){ session = { playerId:null, playerName:null, isAdmin:false }; loginMode='player'; clearSession(); render(); };
 
   function renderPredictTab(){
     if(!rounds.length) return `<div class="pr-card"><div class="pr-empty">ما فيه جولات بعد — انتظر المنظم يضيف الجولة الأولى.</div></div>`;
     if(!selectedRoundId) selectedRoundId = findOpenRoundId();
     const roundChips = rounds.map(r => `<button class="pr-round-chip ${r.id===selectedRoundId?'active':''}" onclick="prSelectRound('${r.id}')">${toAr(esc(r.name))}</button>`).join('');
     const rnd = rounds.find(r => r.id === selectedRoundId) || rounds[0];
+    const locked = isRoundLocked(rnd);
     const myPreds = predictions[session.playerId] || {};
+
+    if(locked){
+      // round started — show everyone's predictions for every match in this round
+      const rows = rnd.matches.map(m => {
+        const allPicks = players.map(pl => {
+          const pred = (predictions[pl.id] || {})[m.id];
+          const has = pred && pred.home !== '' && pred.home != null;
+          const txt = has ? `${toAr(pred.home)}-${toAr(pred.away)}` : '—';
+          const isMe = pl.id === session.playerId;
+          return `<span style="display:inline-block;margin:3px 6px 3px 0;padding:3px 9px;border-radius:999px;font-size:12px;background:${isMe?'rgba(217,164,65,0.25)':'rgba(255,255,255,0.06)'};color:${isMe?'var(--gold-bright)':'var(--text-dim)'}">${esc(pl.name)}: ${txt}</span>`;
+        }).join('');
+        const realTxt = m.finished ? `${toAr(m.homeScore)} - ${toAr(m.awayScore)}` : '';
+        return `<div style="padding:12px 6px;border-bottom:1px dashed rgba(255,255,255,0.08)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <b>${esc(m.home)} × ${esc(m.away)}</b>
+            <span class="pr-match-time">${m.finished ? 'النتيجة: '+realTxt : fmtDT(m.kickoff)}</span>
+          </div>
+          <div>${allPicks || '<span class="pr-hint">محد توقع بعد</span>'}</div>
+        </div>`;
+      }).join('');
+      return `
+        <div class="pr-round-select">${roundChips}</div>
+        <div class="pr-card">
+          <div class="pr-section-title">توقعات ${toAr(esc(rnd.name))} 🔒</div>
+          <div class="pr-hint" style="margin-bottom:10px">الجولة بدأت — التوقعات مقفلة وظاهرة للجميع.</div>
+          ${rows}
+        </div>`;
+    }
+
     const rows = rnd.matches.map(m => {
-      const locked = isLocked(m);
       const pred = myPreds[m.id] || { home:'', away:'' };
       return `
       <div class="pr-match">
         <div class="pr-team home">${esc(m.home)}</div>
         <div class="pr-score-box">
-          <input type="text" inputmode="numeric" maxlength="2" data-mid="${m.id}" data-side="home" value="${toAr(pred.home ?? '')}" oninput="prDigitInput(this)" ${locked?'disabled':''}>
+          <input type="text" inputmode="numeric" maxlength="2" data-mid="${m.id}" data-side="home" value="${toAr(pred.home ?? '')}" oninput="prDigitInput(this)">
           <span class="pr-score-dash">–</span>
-          <input type="text" inputmode="numeric" maxlength="2" data-mid="${m.id}" data-side="away" value="${toAr(pred.away ?? '')}" oninput="prDigitInput(this)" ${locked?'disabled':''}>
+          <input type="text" inputmode="numeric" maxlength="2" data-mid="${m.id}" data-side="away" value="${toAr(pred.away ?? '')}" oninput="prDigitInput(this)">
         </div>
         <div class="pr-team away">${esc(m.away)}</div>
         <div class="pr-match-meta">
           <div class="pr-match-time">${fmtDT(m.kickoff)}</div>
-          ${locked ? '<div class="pr-lock">🔒 مقفل</div>' : '<div class="pr-open-badge">● مفتوح</div>'}
+          <div class="pr-open-badge">● مفتوح</div>
         </div>
       </div>`;
     }).join('');
@@ -390,6 +450,7 @@
       <div class="pr-round-select">${roundChips}</div>
       <div class="pr-card">
         <div class="pr-section-title">مباريات ${toAr(esc(rnd.name))}</div>
+        <div class="pr-hint" style="margin-bottom:10px">توقعاتك سرّية لين تبدأ أول مباراة بالجولة — وقتها تنقفل توقعات كل الجولة مرة وحدة وتظهر للجميع.</div>
         ${rows}
         <div style="margin-top:14px;display:flex;justify-content:flex-end">
           <button class="pr-btn" onclick="prSavePredictions('${rnd.id}')">حفظ التوقعات 💾</button>
@@ -400,10 +461,10 @@
   window.prSelectRound = function(id){ selectedRoundId = id; render(); };
   window.prSavePredictions = async function(roundId){
     const rnd = rounds.find(r => r.id === roundId);
+    if(isRoundLocked(rnd)){ prToast('الجولة بدأت وانقفلت التوقعات', true); render(); return; }
     const mine = predictions[session.playerId] ? {...predictions[session.playerId]} : {};
     let changed = false, blocked = false;
     rnd.matches.forEach(m => {
-      if(isLocked(m)) return;
       const hEl = document.querySelector(`input[data-mid="${m.id}"][data-side="home"]`);
       const aEl = document.querySelector(`input[data-mid="${m.id}"][data-side="away"]`);
       const h = hEl.value === '' ? '' : Number(toWest(hEl.value));
@@ -506,7 +567,23 @@
         <div id="ar-err" class="pr-error"></div>
       </div>`;
     const existing = rounds.slice().reverse().map(rnd => {
-      const matches = rnd.matches.map(m => `
+      const matches = rnd.matches.map(m => {
+        if(editingMatchId === m.id){
+          return `<div class="pr-match-draft">
+            <div class="pr-admin-form-row">
+              <input class="pr-input" id="em-home" list="pr-teams" value="${esc(m.home)}">
+              <span style="color:var(--text-dim)">×</span>
+              <input class="pr-input" id="em-away" list="pr-teams" value="${esc(m.away)}">
+            </div>
+            <label class="pr-label">موعد المباراة</label>
+            <input class="pr-input" id="em-kickoff" type="datetime-local" value="${m.kickoff ? m.kickoff.slice(0,16) : ''}" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif">
+            <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
+              <button class="pr-btn ghost small" onclick="prCancelEditMatch()">إلغاء</button>
+              <button class="pr-btn small" onclick="prSaveEditMatch('${rnd.id}','${m.id}')">حفظ التعديل</button>
+            </div>
+          </div>`;
+        }
+        return `
         <div class="pr-match" style="flex-wrap:wrap">
           <div style="flex:1;min-width:150px">
             <b>${esc(m.home)} × ${esc(m.away)}</b>
@@ -518,7 +595,9 @@
             <input type="text" inputmode="numeric" maxlength="2" class="pr-res-input" data-round="${rnd.id}" data-match="${m.id}" data-side="away" value="${toAr(m.awayScore ?? '')}" oninput="prDigitInput(this)" style="width:34px">
           </div>
           <button class="pr-btn small" onclick="prSaveMatchResult('${rnd.id}','${m.id}')">حفظ النتيجة</button>
-        </div>`).join('');
+          <button class="pr-btn ghost small" onclick="prStartEditMatch('${m.id}')">تعديل</button>
+        </div>`;
+      }).join('');
       return `<div class="pr-card">
         <div class="pr-flex-between"><div class="pr-section-title">${toAr(esc(rnd.name))}</div>
         <button class="pr-btn danger small" onclick="prDeleteRound('${rnd.id}')">حذف الجولة</button></div>
@@ -527,6 +606,25 @@
     }).join('');
     return newRoundForm + existing;
   }
+  let editingMatchId = null;
+  window.prStartEditMatch = function(matchId){ editingMatchId = matchId; render(); };
+  window.prCancelEditMatch = function(){ editingMatchId = null; render(); };
+  window.prSaveEditMatch = async function(roundId, matchId){
+    const home = document.getElementById('em-home').value.trim();
+    const away = document.getElementById('em-away').value.trim();
+    const kickoffRaw = document.getElementById('em-kickoff').value;
+    if(!home || !away){ prToast('أدخل اسمي الفريقين', true); return; }
+    const rnd = rounds.find(r => r.id === roundId);
+    const m = rnd.matches.find(x => x.id === matchId);
+    const backup = { home: m.home, away: m.away, kickoff: m.kickoff };
+    m.home = home; m.away = away;
+    m.kickoff = kickoffRaw ? new Date(kickoffRaw).toISOString() : null;
+    const ok = await sSet('rounds', rounds);
+    if(!ok){ m.home = backup.home; m.away = backup.away; m.kickoff = backup.kickoff; prToast('صار خطأ أثناء الحفظ — حاول مرة ثانية', true); }
+    else prToast('تم حفظ التعديل');
+    editingMatchId = null;
+    render();
+  };
 
   function renderDraftMatch(m, idx){
     return `<div class="pr-match-draft">
@@ -673,6 +771,7 @@
     render();
   };
 
+  function randPin(){ return String(Math.floor(1000 + Math.random()*9000)); }
   function renderAdminPlayers(){
     const addForm = `
       <div class="pr-card">
@@ -680,21 +779,24 @@
         <div class="pr-admin-form-row">
           <input class="pr-input" id="ap-name" placeholder="الاسم">
           <input class="pr-input" id="ap-email" type="email" placeholder="الإيميل">
+          <input class="pr-input" id="ap-pin" placeholder="رمز سري (٤ أرقام)" value="${randPin()}" style="max-width:150px">
           <button class="pr-btn small" onclick="prAdminAddPlayer()">إضافة</button>
         </div>
+        <div class="pr-hint">الرمز معبّى تلقائيًا وتقدر تغيّره — لازم تعطيه للاعب مع إيميله عشان يقدر يدخل.</div>
         <div id="ap-err" class="pr-error"></div>
       </div>`;
     if(!players.length) return addForm + `<div class="pr-card"><div class="pr-empty">ما ضفت أي متسابق بعد.</div></div>`;
-    const rows = players.map(p => `<div class="pr-match"><div style="flex:1"><b>${esc(p.name)}</b><div class="pr-match-time">${esc(p.email||'')}</div></div><button class="pr-btn danger small" onclick="prRemovePlayer('${p.id}')">إزالة</button></div>`).join('');
+    const rows = players.map(p => `<div class="pr-match"><div style="flex:1"><b>${esc(p.name)}</b><div class="pr-match-time">${esc(p.email||'')} — الرمز: ${esc(p.pin||'—')}</div></div><button class="pr-btn danger small" onclick="prRemovePlayer('${p.id}')">إزالة</button></div>`).join('');
     return addForm + `<div class="pr-card"><div class="pr-section-title">المتسابقون (${toAr(players.length)})</div>${rows}</div>`;
   }
   window.prAdminAddPlayer = async function(){
     const name = document.getElementById('ap-name').value.trim();
     const email = document.getElementById('ap-email').value.trim().toLowerCase();
+    const pin = document.getElementById('ap-pin').value.trim();
     const errEl = document.getElementById('ap-err');
-    if(!name || !email){ errEl.textContent = 'أدخل الاسم والإيميل.'; return; }
+    if(!name || !email || !pin){ errEl.textContent = 'أدخل الاسم والإيميل والرمز السري.'; return; }
     if(players.some(p => (p.email||'').trim().toLowerCase() === email)){ errEl.textContent = 'هذا الإيميل مضاف مسبقًا.'; return; }
-    players.push({ id: uid('pl'), name, email, createdAt: new Date().toISOString() });
+    players.push({ id: uid('pl'), name, email, pin, createdAt: new Date().toISOString() });
     const ok = await sSet('players', players);
     if(!ok){ errEl.textContent = 'صار خطأ أثناء الحفظ.'; return; }
     render();
@@ -735,7 +837,7 @@
     if(typeof XLSX === 'undefined'){ alert('تعذر تحميل مكتبة التصدير، تأكد من اتصالك بالإنترنت وحاول مرة ثانية.'); return; }
     const wb = XLSX.utils.book_new();
 
-    const playersRows = players.map(p => ({ الاسم: p.name, الإيميل: p.email || '', 'تاريخ التسجيل': p.createdAt || '' }));
+    const playersRows = players.map(p => ({ الاسم: p.name, الإيميل: p.email || '', 'الرمز السري': p.pin || '', 'تاريخ التسجيل': p.createdAt || '' }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(playersRows.length?playersRows:[{الاسم:''}]), 'اللاعبون');
 
     const matchRows = [];
@@ -786,6 +888,13 @@
     await checkStorageHealth();
     if(!storageHealthy){ render(); return; }
     await loadAll();
+    const saved = loadSession();
+    if(saved){
+      if(saved.isAdmin){ session.isAdmin = true; activeTab = 'admin'; }
+      else if(saved.playerId && players.some(p => p.id === saved.playerId)){
+        session.playerId = saved.playerId; session.playerName = saved.playerName; activeTab = 'predict';
+      } else { clearSession(); }
+    }
     render();
   };
 
