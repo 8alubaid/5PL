@@ -363,6 +363,7 @@
     const existing = players.find(p => (p.email || '').trim().toLowerCase() === email);
     if(!existing){ document.getElementById('login-err').textContent = 'هذا الإيميل غير مسجل — خلّي المنظم يضيفك من لوحة التحكم.'; return; }
     if((existing.pin || '') !== pin){ document.getElementById('login-err').textContent = 'الرمز السري غير صحيح.'; return; }
+    if(existing.suspended){ document.getElementById('login-err').textContent = 'حسابك موقوف مؤقتًا من المنظم — تواصل معه.'; return; }
     session.playerId = existing.id; session.playerName = existing.name;
     activeTab = 'predict';
     saveSession();
@@ -786,9 +787,58 @@
         <div id="ap-err" class="pr-error"></div>
       </div>`;
     if(!players.length) return addForm + `<div class="pr-card"><div class="pr-empty">ما ضفت أي متسابق بعد.</div></div>`;
-    const rows = players.map(p => `<div class="pr-match"><div style="flex:1"><b>${esc(p.name)}</b><div class="pr-match-time">${esc(p.email||'')} — الرمز: ${esc(p.pin||'—')}</div></div><button class="pr-btn danger small" onclick="prRemovePlayer('${p.id}')">إزالة</button></div>`).join('');
+    const rows = players.map(p => {
+      if(editingPlayerId === p.id){
+        return `<div class="pr-match-draft">
+          <div class="pr-admin-form-row">
+            <input class="pr-input" id="ep-name" value="${esc(p.name)}" placeholder="الاسم">
+            <input class="pr-input" id="ep-email" type="email" value="${esc(p.email||'')}" placeholder="الإيميل">
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
+            <button class="pr-btn ghost small" onclick="prCancelEditPlayer()">إلغاء</button>
+            <button class="pr-btn small" onclick="prSaveEditPlayer('${p.id}')">حفظ</button>
+          </div>
+        </div>`;
+      }
+      const suspended = !!p.suspended;
+      return `<div class="pr-match" style="${suspended?'opacity:0.55':''}">
+        <div style="flex:1">
+          <b>${esc(p.name)}</b> ${suspended ? '<span class="pr-tag closed">موقوف</span>' : ''}
+          <div class="pr-match-time">${esc(p.email||'')} — الرمز: ${esc(p.pin||'—')}</div>
+        </div>
+        <button class="pr-btn ghost small" onclick="prStartEditPlayer('${p.id}')">تعديل</button>
+        <button class="pr-btn ${suspended?'':'ghost'} small" onclick="prToggleSuspendPlayer('${p.id}')">${suspended?'تفعيل':'إيقاف مؤقت'}</button>
+        <button class="pr-btn danger small" onclick="prRemovePlayer('${p.id}')">إزالة</button>
+      </div>`;
+    }).join('');
     return addForm + `<div class="pr-card"><div class="pr-section-title">المتسابقون (${toAr(players.length)})</div>${rows}</div>`;
   }
+  let editingPlayerId = null;
+  window.prStartEditPlayer = function(id){ editingPlayerId = id; render(); };
+  window.prCancelEditPlayer = function(){ editingPlayerId = null; render(); };
+  window.prSaveEditPlayer = async function(id){
+    const name = document.getElementById('ep-name').value.trim();
+    const email = document.getElementById('ep-email').value.trim().toLowerCase();
+    if(!name || !email){ prToast('أدخل الاسم والإيميل', true); return; }
+    if(players.some(p => p.id !== id && (p.email||'').trim().toLowerCase() === email)){ prToast('هذا الإيميل مستخدم مسبقًا لمتسابق ثاني', true); return; }
+    const p = players.find(x => x.id === id);
+    const backup = { name: p.name, email: p.email };
+    p.name = name; p.email = email;
+    const ok = await sSet('players', players);
+    if(!ok){ p.name = backup.name; p.email = backup.email; prToast('صار خطأ أثناء الحفظ — حاول مرة ثانية', true); }
+    else prToast('تم حفظ التعديل');
+    editingPlayerId = null;
+    render();
+  };
+  window.prToggleSuspendPlayer = async function(id){
+    const p = players.find(x => x.id === id);
+    const prev = !!p.suspended;
+    p.suspended = !prev;
+    const ok = await sSet('players', players);
+    if(!ok){ p.suspended = prev; prToast('صار خطأ أثناء الحفظ — حاول مرة ثانية', true); }
+    else prToast(p.suspended ? 'تم إيقاف المتسابق مؤقتًا' : 'تم تفعيل المتسابق');
+    render();
+  };
   window.prAdminAddPlayer = async function(){
     const name = document.getElementById('ap-name').value.trim();
     const email = document.getElementById('ap-email').value.trim().toLowerCase();
@@ -837,7 +887,7 @@
     if(typeof XLSX === 'undefined'){ alert('تعذر تحميل مكتبة التصدير، تأكد من اتصالك بالإنترنت وحاول مرة ثانية.'); return; }
     const wb = XLSX.utils.book_new();
 
-    const playersRows = players.map(p => ({ الاسم: p.name, الإيميل: p.email || '', 'الرمز السري': p.pin || '', 'تاريخ التسجيل': p.createdAt || '' }));
+    const playersRows = players.map(p => ({ الاسم: p.name, الإيميل: p.email || '', 'الرمز السري': p.pin || '', الحالة: p.suspended ? 'موقوف' : 'نشط', 'تاريخ التسجيل': p.createdAt || '' }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(playersRows.length?playersRows:[{الاسم:''}]), 'اللاعبون');
 
     const matchRows = [];
@@ -891,8 +941,10 @@
     const saved = loadSession();
     if(saved){
       if(saved.isAdmin){ session.isAdmin = true; activeTab = 'admin'; }
-      else if(saved.playerId && players.some(p => p.id === saved.playerId)){
-        session.playerId = saved.playerId; session.playerName = saved.playerName; activeTab = 'predict';
+      else if(saved.playerId){
+        const p = players.find(x => x.id === saved.playerId);
+        if(p && !p.suspended){ session.playerId = p.id; session.playerName = p.name; activeTab = 'predict'; }
+        else clearSession();
       } else { clearSession(); }
     }
     render();
