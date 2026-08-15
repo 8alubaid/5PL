@@ -57,11 +57,30 @@
     "استاد مدينة المجمعة الرياضية":"Majmaah Sports City Stadium",
     "استاد الاتفاق":"Al-Ettifaq Club Stadium, Dammam",
     "ملعب نادي الحزم":"Al-Hazem Club Stadium, Ar Rass",
-    "استاد الأمير تركي بن عبدالعزيز":"Prince Turki bin Abdulaziz Stadium, Diriyah"
+    "استاد الأمير تركي بن عبدالعزيز":"Prince Turki bin Abdulaziz Stadium, Diriyah",
+    "استاد الملك فهد الدولي":"King Fahd International Stadium, Riyadh"
   };
+  // Bigger venues the league sometimes uses for a match not tied to either club's own
+  // ground (renovation, high-demand fixture, etc.) — offered alongside the two teams'
+  // home stadiums in the picker.
+  const NEUTRAL_STADIUMS = ["استاد الملك فهد الدولي"];
   function stadiumName(ar){
     if(!ar) return '';
     return lang === 'en' ? (STADIUM_EN[ar] || ar) : ar;
+  }
+  function matchStadiumOptions(home, away){
+    const opts = [];
+    const add = (ar) => { if(ar && !opts.includes(ar)) opts.push(ar); };
+    add(TEAM_STADIUM[home]);
+    add(TEAM_STADIUM[away]);
+    NEUTRAL_STADIUMS.forEach(add);
+    return opts;
+  }
+  function stadiumSelectOptions(selected, home, away){
+    const opts = matchStadiumOptions(home, away);
+    if(selected && !opts.includes(selected)) opts.unshift(selected);
+    return `<option value="" ${!selected?'selected':''}>${t('selectStadium')}</option>` +
+      opts.map(s => `<option value="${esc(s)}" ${selected===s?'selected':''}>${esc(stadiumName(s))}</option>`).join('');
   }
   const DRAW_BADGE = { code:'⚖', c1:'#3a3a3a', c2:'#8a8a8a' };
   function teamBadgeHTML(ar, extraClass){
@@ -178,6 +197,7 @@
     selectTeam: { ar:'-- اختر الفريق --', en:'-- Select Team --' },
     kickoffLabel: { ar:'موعد بداية المباراة', en:'Kickoff Time' },
     stadiumLabel: { ar:'الملعب', en:'Stadium' },
+    selectStadium: { ar:'-- اختر الملعب --', en:'-- Select Stadium --' },
     cancel: { ar:'إلغاء', en:'Cancel' },
     saveEdit: { ar:'حفظ التعديل', en:'Save Changes' },
     finished: { ar:'منتهية', en:'Finished' },
@@ -728,7 +748,7 @@
                 <input type="text" inputmode="numeric" maxlength="2" value="${toAr(d.awayScore)}" oninput="prDigitInput(this); prUpdateRoundDraft('${m.id}','awayScore',this.value)" style="width:34px">
               </div>
             </div>
-            <input class="pr-input" placeholder="🏟️ ${t('stadiumLabel')}" value="${esc(d.stadium)}" oninput="prUpdateRoundDraft('${m.id}','stadium',this.value)" style="margin-top:6px">
+            <select class="pr-select" onchange="prUpdateRoundDraft('${m.id}','stadium',this.value)" style="width:100%;margin-top:6px">${stadiumSelectOptions(d.stadium, d.home, d.away)}</select>
           </div>`;
         }
         const scoreTxt = m.finished ? `${toAr(m.homeScore)} - ${toAr(m.awayScore)}` : '–';
@@ -763,7 +783,7 @@
       kickoff: m.kickoff ? toLocalDatetimeValue(new Date(m.kickoff)) : '',
       homeScore: m.homeScore != null ? String(m.homeScore) : '',
       awayScore: m.awayScore != null ? String(m.awayScore) : '',
-      stadium: m.stadium || TEAM_STADIUM[m.home] || ''
+      stadium: m.stadium || matchStadiumOptions(m.home, m.away)[0] || ''
     };
   }
   window.prStartEditRound = function(roundId){
@@ -776,12 +796,14 @@
   };
   window.prCancelEditRound = function(){ editingRoundId = null; roundEditDraft = {}; render(); };
   window.prUpdateRoundDraft = function(matchId, field, val){
-    if(!roundEditDraft[matchId]) return;
-    if(field === 'homeScore' || field === 'awayScore') roundEditDraft[matchId][field] = toWest(val).replace(/[^0-9]/g,'');
-    else roundEditDraft[matchId][field] = val;
-    if(field === 'home' && val && TEAM_STADIUM[val]){
-      const d = roundEditDraft[matchId];
-      if(!d.stadium || Object.values(TEAM_STADIUM).includes(d.stadium)){ d.stadium = TEAM_STADIUM[val]; render(); }
+    const d = roundEditDraft[matchId];
+    if(!d) return;
+    if(field === 'homeScore' || field === 'awayScore') d[field] = toWest(val).replace(/[^0-9]/g,'');
+    else d[field] = val;
+    if(field === 'home' || field === 'away'){
+      const opts = matchStadiumOptions(d.home, d.away);
+      if(!d.stadium || !opts.includes(d.stadium)) d.stadium = opts[0] || '';
+      render();
     }
   };
   window.prSaveRoundEdits = async function(roundId){
@@ -829,8 +851,8 @@
       </div>
       <label class="pr-label">${t('kickoffLabel')}</label>
       <input class="pr-input" type="datetime-local" value="${m.kickoff||''}" oninput="prUpdateDraft(${idx},'kickoff',this.value)" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif">
-      <label class="pr-label">${t('stadiumLabel')}</label>
-      <input class="pr-input" placeholder="🏟️ ${t('stadiumLabel')}" value="${esc(m.stadium||'')}" oninput="prUpdateDraft(${idx},'stadium',this.value)">
+      <label class="pr-label">🏟️ ${t('stadiumLabel')}</label>
+      <select class="pr-select" onchange="prUpdateDraft(${idx},'stadium',this.value)" style="width:100%">${stadiumSelectOptions(m.stadium, m.home, m.away)}</select>
     </div>`;
   }
   function makeEmptyDraftMatches(){
@@ -893,7 +915,7 @@
           const pad = n => String(n).padStart(2,'0');
           kickoff = `${y}-${pad(mo)}-${pad(d)}T${timeStr || '19:00'}`;
         }
-        parsedMatches.push({ home, away, kickoff, stadium: TEAM_STADIUM[home] || '' });
+        parsedMatches.push({ home, away, kickoff, stadium: matchStadiumOptions(home, away)[0] || '' });
       } else if(!roundRe.test(line) && !isoM && !dmM){
         // a line with no teams, no round marker, no date — likely noise, ignore silently
       } else if(uniqueTeams.length === 1){
@@ -935,9 +957,11 @@
       }
       if(changed) render();
     }
-    if(field === 'home' && val && TEAM_STADIUM[val]){
+    if(field === 'home' || field === 'away'){
       const row = draftMatches[idx];
-      if(!row.stadium || Object.values(TEAM_STADIUM).includes(row.stadium)){ row.stadium = TEAM_STADIUM[val]; render(); }
+      const opts = matchStadiumOptions(row.home, row.away);
+      if(!row.stadium || !opts.includes(row.stadium)) row.stadium = opts[0] || '';
+      render();
     }
   };
   window.prSaveRound = async function(){
