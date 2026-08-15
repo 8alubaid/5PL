@@ -31,6 +31,38 @@
     "الخلود":   { code:'KHD', c1:'#4c1d75', c2:'#9333ea' },
     "الفيصلي":  { code:'FYS', c1:'#3b0a0a', c2:'#b91c1c' }
   };
+  // Real home stadiums per club (2025–26 Roshn Saudi League), used to auto-suggest
+  // a match venue — organizer can still override per match.
+  const TEAM_STADIUM = {
+    "الهلال":"كينغدوم أرينا", "النصر":"الأول بارك",
+    "الاتحاد":"استاد الملك عبدالله الرياضي", "الأهلي":"استاد الملك عبدالله الرياضي",
+    "القادسية":"استاد الأمير محمد بن فهد", "الشباب":"استاد الشباب",
+    "الفتح":"ميدان تمويل الأولى", "الخليج":"استاد الأمير محمد بن فهد",
+    "التعاون":"استاد الملك عبدالله الرياضي - بريدة", "أبها":"استاد الأمير سلطان بن عبدالعزيز",
+    "نيوم":"استاد الملك خالد الرياضي", "الفيحاء":"استاد مدينة المجمعة الرياضية",
+    "الاتفاق":"استاد الاتفاق", "الحزم":"ملعب نادي الحزم",
+    "الرياض":"استاد الشباب", "الدرعية":"استاد الأمير تركي بن عبدالعزيز",
+    "الخلود":"ملعب نادي الحزم", "الفيصلي":"استاد مدينة المجمعة الرياضية"
+  };
+  const STADIUM_EN = {
+    "كينغدوم أرينا":"Kingdom Arena, Riyadh",
+    "الأول بارك":"Al-Awwal Park, Riyadh",
+    "استاد الملك عبدالله الرياضي":"King Abdullah Sports City, Jeddah",
+    "استاد الأمير محمد بن فهد":"Prince Mohamed bin Fahd Stadium, Dammam",
+    "استاد الشباب":"Al-Shabab Club Stadium, Riyadh",
+    "ميدان تمويل الأولى":"Maydan Tamweel Aloula, Al-Mubarraz",
+    "استاد الملك عبدالله الرياضي - بريدة":"King Abdullah Sports City, Buraidah",
+    "استاد الأمير سلطان بن عبدالعزيز":"Prince Sultan bin Abdulaziz Sports City, Abha",
+    "استاد الملك خالد الرياضي":"King Khalid Sport City, Tabuk",
+    "استاد مدينة المجمعة الرياضية":"Majmaah Sports City Stadium",
+    "استاد الاتفاق":"Al-Ettifaq Club Stadium, Dammam",
+    "ملعب نادي الحزم":"Al-Hazem Club Stadium, Ar Rass",
+    "استاد الأمير تركي بن عبدالعزيز":"Prince Turki bin Abdulaziz Stadium, Diriyah"
+  };
+  function stadiumName(ar){
+    if(!ar) return '';
+    return lang === 'en' ? (STADIUM_EN[ar] || ar) : ar;
+  }
   const DRAW_BADGE = { code:'⚖', c1:'#3a3a3a', c2:'#8a8a8a' };
   function teamBadgeHTML(ar, extraClass){
     const b = TEAM_BADGE[ar];
@@ -145,6 +177,7 @@
     saveRound: { ar:'حفظ الجولة', en:'Save Round' },
     selectTeam: { ar:'-- اختر الفريق --', en:'-- Select Team --' },
     kickoffLabel: { ar:'موعد بداية المباراة', en:'Kickoff Time' },
+    stadiumLabel: { ar:'الملعب', en:'Stadium' },
     cancel: { ar:'إلغاء', en:'Cancel' },
     saveEdit: { ar:'حفظ التعديل', en:'Save Changes' },
     finished: { ar:'منتهية', en:'Finished' },
@@ -476,6 +509,7 @@
             <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
             <span class="pr-match-time">${m.finished ? t('resultPrefix')+realTxt : fmtDT(m.kickoff)}</span>
           </div>
+          ${m.stadium ? `<div class="pr-hint" style="margin:-4px 0 8px">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}
           <div>${allPicks || `<span class="pr-hint">${t('noOneYet')}</span>`}</div>
         </div>`;
       }).join('');
@@ -503,6 +537,7 @@
           <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
           <span class="pr-match-time">${fmtDT(m.kickoff)}</span>
         </div>
+        ${m.stadium ? `<div class="pr-hint" style="margin:-4px 0 8px">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}
         <div class="pr-outcome-row">
           ${btn('home', teamBadgeHTML(m.home,'pr-team-badge-lg'), esc(teamName(m.home)))}
           ${btn('draw', drawBadgeHTML('pr-team-badge-lg'), t('draw'))}
@@ -615,7 +650,7 @@
         const pill = !m.finished ? '' : correct ? `<span class="pr-pts-pill pr-pts-3">✅</span>` : `<span class="pr-pts-pill pr-pts-0">❌</span>`;
         const exactPill = exactHit ? `<span class="pr-pts-pill pr-pts-1">🎯 +١</span>` : '';
         return `<div class="pr-match" style="flex-wrap:wrap">
-          <div style="flex:1;min-width:140px"><b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b><div class="pr-match-time">${t('resultPrefix')}${realTxt}</div></div>
+          <div style="flex:1;min-width:140px"><b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b><div class="pr-match-time">${t('resultPrefix')}${realTxt}</div>${m.stadium ? `<div class="pr-match-time">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}</div>
           <div style="text-align:end"><div class="pr-match-time">${t('yourPredictionPrefix')}${predTxt}${exactTxt}</div>${pill}${exactPill}</div>
         </div>`;
       }).join('');
@@ -693,6 +728,7 @@
                 <input type="text" inputmode="numeric" maxlength="2" value="${toAr(d.awayScore)}" oninput="prDigitInput(this); prUpdateRoundDraft('${m.id}','awayScore',this.value)" style="width:34px">
               </div>
             </div>
+            <input class="pr-input" placeholder="🏟️ ${t('stadiumLabel')}" value="${esc(d.stadium)}" oninput="prUpdateRoundDraft('${m.id}','stadium',this.value)" style="margin-top:6px">
           </div>`;
         }
         const scoreTxt = m.finished ? `${toAr(m.homeScore)} - ${toAr(m.awayScore)}` : '–';
@@ -701,6 +737,7 @@
           <div style="flex:1;min-width:150px">
             <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
             <div class="pr-match-time">${fmtDT(m.kickoff)} — <span class="pr-tag ${m.finished?'closed':'open'}">${m.finished?t('finished'):t('resultPending')}</span></div>
+            ${m.stadium ? `<div class="pr-match-time">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}
           </div>
           <div class="pr-score-readonly">${scoreTxt}</div>
         </div>`;
@@ -725,7 +762,8 @@
       home: m.home, away: m.away,
       kickoff: m.kickoff ? toLocalDatetimeValue(new Date(m.kickoff)) : '',
       homeScore: m.homeScore != null ? String(m.homeScore) : '',
-      awayScore: m.awayScore != null ? String(m.awayScore) : ''
+      awayScore: m.awayScore != null ? String(m.awayScore) : '',
+      stadium: m.stadium || TEAM_STADIUM[m.home] || ''
     };
   }
   window.prStartEditRound = function(roundId){
@@ -741,6 +779,10 @@
     if(!roundEditDraft[matchId]) return;
     if(field === 'homeScore' || field === 'awayScore') roundEditDraft[matchId][field] = toWest(val).replace(/[^0-9]/g,'');
     else roundEditDraft[matchId][field] = val;
+    if(field === 'home' && val && TEAM_STADIUM[val]){
+      const d = roundEditDraft[matchId];
+      if(!d.stadium || Object.values(TEAM_STADIUM).includes(d.stadium)){ d.stadium = TEAM_STADIUM[val]; render(); }
+    }
   };
   window.prSaveRoundEdits = async function(roundId){
     const rnd = rounds.find(r => r.id === roundId);
@@ -749,11 +791,12 @@
       const d = roundEditDraft[m.id];
       if(!d || !d.home.trim() || !d.away.trim()){ prToast(t('enterBothTeams'), true); return; }
     }
-    const backups = rnd.matches.map(m => ({ id:m.id, home:m.home, away:m.away, kickoff:m.kickoff, homeScore:m.homeScore, awayScore:m.awayScore, finished:m.finished }));
+    const backups = rnd.matches.map(m => ({ id:m.id, home:m.home, away:m.away, kickoff:m.kickoff, homeScore:m.homeScore, awayScore:m.awayScore, finished:m.finished, stadium:m.stadium }));
     rnd.matches.forEach(m => {
       const d = roundEditDraft[m.id];
       m.home = d.home.trim(); m.away = d.away.trim();
       m.kickoff = d.kickoff ? new Date(d.kickoff).toISOString() : null;
+      m.stadium = (d.stadium || '').trim();
       if(d.homeScore !== '' && d.awayScore !== ''){
         m.homeScore = Number(d.homeScore); m.awayScore = Number(d.awayScore); m.finished = true;
       }
@@ -762,7 +805,7 @@
     if(!ok){
       rnd.matches.forEach(m => {
         const b = backups.find(x => x.id === m.id);
-        m.home = b.home; m.away = b.away; m.kickoff = b.kickoff; m.homeScore = b.homeScore; m.awayScore = b.awayScore; m.finished = b.finished;
+        m.home = b.home; m.away = b.away; m.kickoff = b.kickoff; m.homeScore = b.homeScore; m.awayScore = b.awayScore; m.finished = b.finished; m.stadium = b.stadium;
       });
       prToast(t('saveErrRetry'), true);
     } else {
@@ -786,10 +829,12 @@
       </div>
       <label class="pr-label">${t('kickoffLabel')}</label>
       <input class="pr-input" type="datetime-local" value="${m.kickoff||''}" oninput="prUpdateDraft(${idx},'kickoff',this.value)" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif">
+      <label class="pr-label">${t('stadiumLabel')}</label>
+      <input class="pr-input" placeholder="🏟️ ${t('stadiumLabel')}" value="${esc(m.stadium||'')}" oninput="prUpdateDraft(${idx},'stadium',this.value)">
     </div>`;
   }
   function makeEmptyDraftMatches(){
-    return Array.from({ length: 9 }, () => ({ home:'', away:'', kickoff:'' }));
+    return Array.from({ length: 9 }, () => ({ home:'', away:'', kickoff:'', stadium:'' }));
   }
   function toLocalDatetimeValue(d){
     const pad = n => String(n).padStart(2,'0');
@@ -848,7 +893,7 @@
           const pad = n => String(n).padStart(2,'0');
           kickoff = `${y}-${pad(mo)}-${pad(d)}T${timeStr || '19:00'}`;
         }
-        parsedMatches.push({ home, away, kickoff });
+        parsedMatches.push({ home, away, kickoff, stadium: TEAM_STADIUM[home] || '' });
       } else if(!roundRe.test(line) && !isoM && !dmM){
         // a line with no teams, no round marker, no date — likely noise, ignore silently
       } else if(uniqueTeams.length === 1){
@@ -890,6 +935,10 @@
       }
       if(changed) render();
     }
+    if(field === 'home' && val && TEAM_STADIUM[val]){
+      const row = draftMatches[idx];
+      if(!row.stadium || Object.values(TEAM_STADIUM).includes(row.stadium)){ row.stadium = TEAM_STADIUM[val]; render(); }
+    }
   };
   window.prSaveRound = async function(){
     const name = document.getElementById('ar-name').value.trim();
@@ -897,7 +946,7 @@
     for(const m of draftMatches){ if(!m.home.trim() || !m.away.trim()){ document.getElementById('ar-err').textContent = t('teamNamesValidation'); return; } }
     const newRound = {
       id: uid('rd'), name,
-      matches: draftMatches.map(m => ({ id: uid('mt'), home: m.home.trim(), away: m.away.trim(), kickoff: m.kickoff ? new Date(m.kickoff).toISOString() : null, homeScore: null, awayScore: null, finished: false }))
+      matches: draftMatches.map(m => ({ id: uid('mt'), home: m.home.trim(), away: m.away.trim(), kickoff: m.kickoff ? new Date(m.kickoff).toISOString() : null, stadium: (m.stadium||'').trim(), homeScore: null, awayScore: null, finished: false }))
     };
     rounds.push(newRound);
     const ok = await sSet('rounds', rounds);
@@ -1053,12 +1102,12 @@
     const matchRows = [];
     rounds.forEach(r => r.matches.forEach(m => matchRows.push(en ? {
       Round: roundDisplayName(r.name), Home: teamName(m.home), Away: teamName(m.away),
-      'Kickoff': m.kickoff ? fmtDT(m.kickoff) : '',
+      'Kickoff': m.kickoff ? fmtDT(m.kickoff) : '', Stadium: m.stadium ? stadiumName(m.stadium) : '',
       'Home Score': m.homeScore, 'Away Score': m.awayScore,
       Finished: m.finished ? 'Yes' : 'No'
     } : {
       الجولة: r.name, المضيف: m.home, الضيف: m.away,
-      'موعد المباراة': m.kickoff ? fmtDT(m.kickoff) : '',
+      'موعد المباراة': m.kickoff ? fmtDT(m.kickoff) : '', الملعب: m.stadium ? stadiumName(m.stadium) : '',
       'نتيجة المضيف': m.homeScore, 'نتيجة الضيف': m.awayScore,
       منتهية: m.finished ? 'نعم' : 'لا'
     })));
