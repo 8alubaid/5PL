@@ -258,7 +258,7 @@
   window.prDigitInput = function(el){ el.value = toAr(toWest(el.value).replace(/[^0-9]/g,'')); };
 
   // ===== ضع رابط نشر Google Apps Script هنا بعد النشر (خطوات النشر بالأسفل في الشات) =====
-  const API_URL = 'https://script.google.com/macros/s/AKfycbxHbwswCzLV1LPdmwwJbk8ZorW_wDAUxanPe7F41WbkCQubmzunAPEXNdLJ-LqZ44CK/exec';
+  const API_URL = 'https://script.google.com/macros/s/AKfycbzOCqf1n2q79COXQG7GpdqFMOwHnE544QG-Hc1uoBKl53IVqixV_vygEK4yFZ76SE_I/exec';
 
   let lastStorageError = '';
   let lastFetchOk = false;
