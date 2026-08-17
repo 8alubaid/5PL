@@ -511,17 +511,27 @@
 
     if(locked){
       const rows = rnd.matches.map(m => {
+        const matchDecided = m.finished && m.homeScore != null && m.awayScore != null;
+        const realOutcome = matchDecided ? matchOutcome(m) : null;
         const allPicks = players.map(pl => {
           const pred = (predictions[pl.id] || {})[m.id];
           const isMe = pl.id === session.playerId;
           let txt = '—';
+          let bg = isMe ? 'rgba(217,164,65,0.25)' : 'rgba(255,255,255,0.06)';
+          let color = isMe ? 'var(--gold-bright)' : 'var(--text-dim)';
           if(pred && pred.outcome){
             txt = outcomeLabel(pred.outcome, m);
             if(pred.exact && pred.exact.home !== '' && pred.exact.home != null){
               txt += ` (🎯 ${toAr(pred.exact.home)}-${toAr(pred.exact.away)})`;
             }
+            if(matchDecided){
+              const correct = pred.outcome === realOutcome;
+              bg = correct ? 'rgba(53,199,120,0.22)' : 'rgba(224,87,74,0.18)';
+              color = correct ? 'var(--green-bright)' : '#ff9d90';
+            }
           }
-          return `<span style="display:inline-block;margin:3px 6px 3px 0;padding:3px 9px;border-radius:999px;font-size:12px;background:${isMe?'rgba(217,164,65,0.25)':'rgba(255,255,255,0.06)'};color:${isMe?'var(--gold-bright)':'var(--text-dim)'}">${esc(pl.name)}: ${txt}</span>`;
+          const meBorder = isMe ? 'box-shadow:0 0 0 1.5px var(--gold-bright) inset;' : '';
+          return `<span style="display:inline-block;margin:3px 6px 3px 0;padding:3px 9px;border-radius:999px;font-size:12px;background:${bg};color:${color};${meBorder}">${esc(pl.name)}: ${txt}</span>`;
         }).join('');
         const realTxt = m.finished ? `${toAr(m.homeScore)} - ${toAr(m.awayScore)}` : '';
         return `<div style="padding:12px 6px;border-bottom:1px dashed rgba(255,255,255,0.08)">
