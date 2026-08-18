@@ -34,30 +34,35 @@
   // Real home stadiums per club (2025–26 Roshn Saudi League), used to auto-suggest
   // a match venue — organizer can still override per match.
   const TEAM_STADIUM = {
-    "الهلال":"كينغدوم أرينا", "النصر":"الأول بارك",
-    "الاتحاد":"استاد الملك عبدالله الرياضي", "الأهلي":"استاد الملك عبدالله الرياضي",
-    "القادسية":"استاد الأمير محمد بن فهد", "الشباب":"استاد الشباب",
-    "الفتح":"ميدان تمويل الأولى", "الخليج":"استاد الأمير محمد بن فهد",
-    "التعاون":"استاد الملك عبدالله الرياضي - بريدة", "أبها":"استاد الأمير سلطان بن عبدالعزيز",
-    "نيوم":"استاد الملك خالد الرياضي", "الفيحاء":"استاد مدينة المجمعة الرياضية",
-    "الاتفاق":"استاد الاتفاق", "الحزم":"ملعب نادي الحزم",
-    "الرياض":"استاد الشباب", "الدرعية":"استاد الأمير تركي بن عبدالعزيز",
-    "الخلود":"ملعب نادي الحزم", "الفيصلي":"استاد مدينة المجمعة الرياضية"
+    "الهلال":"ملعب الهلال", "النصر":"ملعب النصر",
+    "الاتحاد":"ملعب الاتحاد", "الأهلي":"ملعب الأهلي",
+    "القادسية":"ملعب القادسية", "الشباب":"ملعب الشباب",
+    "الفتح":"ملعب الفتح", "الخليج":"ملعب الخليج",
+    "التعاون":"ملعب التعاون", "أبها":"ملعب أبها",
+    "نيوم":"ملعب نيوم", "الفيحاء":"ملعب الفيحاء",
+    "الاتفاق":"ملعب الاتفاق", "الحزم":"ملعب نادي الحزم",
+    "الرياض":"ملعب الرياض", "الدرعية":"ملعب الدرعية",
+    "الخلود":"ملعب الخلود", "الفيصلي":"ملعب الفيصلي"
   };
   const STADIUM_EN = {
-    "كينغدوم أرينا":"Kingdom Arena, Riyadh",
-    "الأول بارك":"Al-Awwal Park, Riyadh",
-    "استاد الملك عبدالله الرياضي":"King Abdullah Sports City, Jeddah",
-    "استاد الأمير محمد بن فهد":"Prince Mohamed bin Fahd Stadium, Dammam",
-    "استاد الشباب":"Al-Shabab Club Stadium, Riyadh",
-    "ميدان تمويل الأولى":"Maydan Tamweel Aloula, Al-Mubarraz",
-    "استاد الملك عبدالله الرياضي - بريدة":"King Abdullah Sports City, Buraidah",
-    "استاد الأمير سلطان بن عبدالعزيز":"Prince Sultan bin Abdulaziz Sports City, Abha",
-    "استاد الملك خالد الرياضي":"King Khalid Sport City, Tabuk",
-    "استاد مدينة المجمعة الرياضية":"Majmaah Sports City Stadium",
-    "استاد الاتفاق":"Al-Ettifaq Club Stadium, Dammam",
-    "ملعب نادي الحزم":"Al-Hazem Club Stadium, Ar Rass",
-    "استاد الأمير تركي بن عبدالعزيز":"Prince Turki bin Abdulaziz Stadium, Diriyah",
+    "ملعب الهلال":"Al-Hilal Stadium",
+    "ملعب النصر":"Al-Nassr Stadium",
+    "ملعب الاتحاد":"Al-Ittihad Stadium",
+    "ملعب الأهلي":"Al-Ahli Stadium",
+    "ملعب القادسية":"Al-Qadsiah Stadium",
+    "ملعب الشباب":"Al-Shabab Stadium",
+    "ملعب الفتح":"Al-Fateh Stadium",
+    "ملعب الخليج":"Al-Khaleej Stadium",
+    "ملعب التعاون":"Al-Taawoun Stadium",
+    "ملعب أبها":"Abha Stadium",
+    "ملعب نيوم":"Neom Stadium",
+    "ملعب الفيحاء":"Al-Fayha Stadium",
+    "ملعب الاتفاق":"Al-Ettifaq Stadium",
+    "ملعب نادي الحزم":"Al-Hazem Stadium",
+    "ملعب الرياض":"Al-Riyadh Stadium",
+    "ملعب الدرعية":"Al-Diriyah Stadium",
+    "ملعب الخلود":"Al-Kholood Stadium",
+    "ملعب الفيصلي":"Al-Faisaly Stadium",
     "استاد الملك فهد الدولي":"King Fahd International Stadium, Riyadh"
   };
   // Bigger venues the league sometimes uses for a match not tied to either club's own
