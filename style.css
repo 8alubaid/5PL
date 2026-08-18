@@ -39,7 +39,7 @@ body { min-height: 100vh; min-height: 100dvh; }
   font-weight: 700;
 }
 html[dir="ltr"] #predictor-root h1, html[dir="ltr"] #predictor-root h2, html[dir="ltr"] #predictor-root h3,
-html[dir="ltr"] #predictor-root .disp, html[dir="ltr"] #predictor-root .pr-title,
+html[dir="ltr"] #predictor-root .disp, html[dir="ltr"] #predictor-root .pr-title, html[dir="ltr"] #predictor-root .pr-title-text,
 html[dir="ltr"] #predictor-root .pr-tab, html[dir="ltr"] #predictor-root .pr-btn,
 html[dir="ltr"] #predictor-root .pr-round-chip, html[dir="ltr"] #predictor-root .pr-rank,
 html[dir="ltr"] #predictor-root .pr-total, html[dir="ltr"] #predictor-root .pr-score-box input {
@@ -98,9 +98,9 @@ html[dir="ltr"] #predictor-root .pr-total, html[dir="ltr"] #predictor-root .pr-s
 }
 .pr-header-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .pr-title { font-family:'Cairo', sans-serif; font-weight:800; font-size: 22px; color: var(--gold-bright); letter-spacing:0.2px; }
-.pr-header .pr-title { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
-.pr-title small { display:block; font-family:'Tajawal', sans-serif; font-weight:500; font-size:12px; color: var(--text-dim); margin-top:3px; letter-spacing:0; }
-.pr-header .pr-title small { flex-basis:100%; margin-top:0; }
+.pr-title-row { display:flex; align-items:center; gap:10px; }
+.pr-title-text { font-family:'Cairo', sans-serif; font-weight:800; font-size: 22px; color: var(--gold-bright); letter-spacing:0.2px; }
+.pr-subtitle { flex-basis:100%; font-family:'Tajawal', sans-serif; font-weight:500; font-size:12px; color: var(--text-dim); letter-spacing:0; }
 .pr-user-badge {
   display:flex; align-items:center; gap:9px; background: linear-gradient(180deg, var(--card-hi), var(--card));
   border:1px solid var(--card-border); border-radius: 999px; padding:6px 14px 6px 6px; font-size:13px;
@@ -283,5 +283,5 @@ html[dir="ltr"] .pr-user-badge { padding: 6px 6px 6px 14px; }
 @media (max-width: 480px) {
   #predictor-root { padding: 16px 10px 50px; }
   .pr-card { padding:16px; }
-  .pr-title { font-size:19px; }
+  .pr-title, .pr-title-text { font-size:19px; }
 }

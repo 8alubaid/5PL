@@ -467,11 +467,15 @@
     const badgeName = session.isAdmin ? t('organizer') : session.playerName;
     root.innerHTML = `
       <div class="pr-header">
-        <div class="pr-title"><img src="logo.png" alt="" class="pr-logo pr-logo-header">${lang==='en' ? FIXED_TITLE_EN : toAr(esc(config.title))}<small>${t('subtitle')}</small></div>
+        <div class="pr-title-row">
+          <img src="logo.png" alt="" class="pr-logo pr-logo-header">
+          <span class="pr-title-text">${lang==='en' ? FIXED_TITLE_EN : toAr(esc(config.title))}</span>
+        </div>
         <div class="pr-header-right">
           ${langToggleBtn()}
           <div class="pr-user-badge"><span class="pr-avatar">${esc((badgeName||'?').trim().charAt(0))}</span><b>${esc(badgeName)}</b> <button class="pr-logout" onclick="prLogout()">${t('logout')}</button></div>
         </div>
+        <div class="pr-subtitle">${t('subtitle')}</div>
       </div>
       <div class="pr-tabs" id="pr-tabs"></div>
       <div id="pr-content"></div>
