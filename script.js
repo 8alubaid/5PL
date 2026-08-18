@@ -240,6 +240,8 @@
     retry: { ar:'إعادة المحاولة', en:'Try Again' },
     storageNotConnected: { ar:'⚠️ التخزين غير مربوط', en:'⚠️ Storage not connected' },
     storageNotConnectedHint: { ar:'لازم تربط الموقع بجدول Google Sheets أول (خطوة تسويها مرة وحدة بس) — رابط الـ Apps Script لسا ما انحط بالكود، أو الرابط المحطوط ما يشتغل.', en:'You need to connect the site to a Google Sheet first (a one-time setup step) — the Apps Script URL isn\'t set in the code yet, or the one that\'s there isn\'t working.' },
+    connectionError: { ar:'⚠️ صار خطأ بالاتصال', en:'⚠️ Connection error' },
+    connectionErrorHint: { ar:'ما قدرنا نوصل للبيانات حاليًا. جرّب تحدّث الصفحة بعد شوي.', en:'We couldn\'t reach the data right now. Try refreshing in a moment.' },
     loadFailed: { ar:'تعذّر تحميل البيانات.', en:'Failed to load data.' }
   };
   function t(key, vars){
@@ -261,20 +263,21 @@
   const API_URL = 'https://script.google.com/macros/s/AKfycbzOCqf1n2q79COXQG7GpdqFMOwHnE544QG-Hc1uoBKl53IVqixV_vygEK4yFZ76SE_I/exec';
 
   let lastStorageError = '';
-  let lastFetchOk = false;
   function fetchWithTimeout(url, opts, ms){
     return Promise.race([
       fetch(url, opts || {}),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), ms || 12000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), ms || 20000))
     ]);
   }
   async function sGet(key){
     try {
       const res = await fetchWithTimeout(API_URL + '?key=' + encodeURIComponent(key));
       const data = await res.json();
-      lastFetchOk = true;
-      return data && data.value ? JSON.parse(data.value) : null;
-    } catch(e){ lastStorageError = (e && e.message === 'TIMEOUT') ? 'انتهى وقت الانتظار (الاتصال بطيء جدًا أو ما استجاب)' : ((e && e.message) ? e.message : String(e)); return null; }
+      return { ok: true, value: data && data.value ? JSON.parse(data.value) : null };
+    } catch(e){
+      lastStorageError = (e && e.message === 'TIMEOUT') ? 'انتهى وقت الانتظار (الاتصال بطيء جدًا أو ما استجاب)' : ((e && e.message) ? e.message : String(e));
+      return { ok: false, value: null };
+    }
   }
   async function sSet(key, value){
     try {
@@ -289,14 +292,13 @@
   }
 
   async function loadAll(){
-    lastFetchOk = false;
     try{
       const [c,p,r,pr] = await Promise.all([sGet('config'), sGet('players'), sGet('rounds'), sGet('predictions')]);
-      if(!lastFetchOk){ storageHealthy = false; return; }
+      if(!c.ok || !p.ok || !r.ok || !pr.ok){ storageHealthy = false; return; }
       storageHealthy = true;
-      config = c || { title: FIXED_TITLE, adminPin: FIXED_ADMIN_PIN, pointsExact: 3, pointsWinner: 1 };
-      if(!c) await sSet('config', config);
-      players = p || []; rounds = r || []; predictions = pr || {};
+      config = c.value || { title: FIXED_TITLE, adminPin: FIXED_ADMIN_PIN, pointsExact: 3, pointsWinner: 1 };
+      if(!c.value) await sSet('config', config);
+      players = p.value || []; rounds = r.value || []; predictions = pr.value || {};
       loadError = false;
     }catch(e){ loadError = true; }
   }
@@ -365,10 +367,15 @@
   // ---------- RENDER ----------
   function render(){
     if(!storageHealthy){
+      // We can't tell yet whether this browser belongs to the admin (session hasn't
+      // loaded — storage is what failed), so fall back to the last locally-remembered
+      // role. Only that case gets the technical detail; everyone else sees a plain,
+      // non-technical message.
+      const knownAdmin = !!((loadSession() || {}).isAdmin);
       root.innerHTML = `<div class="pr-center-screen"><div class="pr-card" style="max-width:440px;text-align:center">
-        <div class="pr-section-title" style="justify-content:center">${t('storageNotConnected')}</div>
-        <div class="pr-hint" style="margin-bottom:14px">${t('storageNotConnectedHint')}</div>
-        ${lastStorageError ? `<div class="pr-hint" style="margin-bottom:14px;direction:ltr;text-align:left;background:rgba(0,0,0,0.25);padding:8px;border-radius:8px;font-size:11px;word-break:break-all">${esc(lastStorageError)}</div>` : ''}
+        <div class="pr-section-title" style="justify-content:center">${knownAdmin ? t('storageNotConnected') : t('connectionError')}</div>
+        <div class="pr-hint" style="margin-bottom:14px">${knownAdmin ? t('storageNotConnectedHint') : t('connectionErrorHint')}</div>
+        ${knownAdmin && lastStorageError ? `<div class="pr-hint" style="margin-bottom:14px;direction:ltr;text-align:left;background:rgba(0,0,0,0.25);padding:8px;border-radius:8px;font-size:11px;word-break:break-all">${esc(lastStorageError)}</div>` : ''}
         <button class="pr-btn" onclick="prBoot()">${t('retry')}</button>
       </div></div>`;
       return;
