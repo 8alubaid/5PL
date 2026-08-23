@@ -46,14 +46,17 @@ export function findOpenRoundId(){
   return state.rounds.length ? state.rounds[state.rounds.length-1].id : null;
 }
 
-export function earliestKickoff(rnd){
-  const times = rnd.matches.filter(m => m.kickoff).map(m => new Date(m.kickoff).getTime());
-  return times.length ? Math.min(...times) : null;
+// A match is only predictable while it hasn't kicked off, hasn't been marked
+// finished, and the organizer hasn't explicitly closed it via its own switch
+// (used to hold back a match that's much later than the rest of its round).
+export function isMatchStarted(m){
+  if(!m.kickoff) return false;
+  return new Date().getTime() >= new Date(m.kickoff).getTime();
 }
-export function isRoundLocked(rnd){
-  const first = earliestKickoff(rnd);
-  if(first == null) return false;
-  return new Date().getTime() >= first;
+export function isMatchPredictable(m){
+  if(m.finished) return false;
+  if(m.predictOpen === false) return false;
+  return !isMatchStarted(m);
 }
 
 export function fmtDT(iso){

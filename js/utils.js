@@ -2,7 +2,7 @@ export const esc = (s) => (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&am
 export const uid = (p) => p + '_' + Math.random().toString(36).slice(2,8) + Date.now().toString(36).slice(-4);
 
 export function makeEmptyDraftMatches(){
-  return Array.from({ length: 9 }, () => ({ home:'', away:'', kickoff:'', stadium:'' }));
+  return Array.from({ length: 9 }, () => ({ home:'', away:'', kickoff:'', stadium:'', predictOpen:true }));
 }
 export function toLocalDatetimeValue(d){
   const pad = n => String(n).padStart(2,'0');

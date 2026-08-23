@@ -50,15 +50,24 @@ export function renderAdminRounds(){
             </div>
           </div>
           <select class="pr-select" onchange="prUpdateRoundDraft('${m.id}','stadium',this.value)" style="width:100%;margin-top:6px">${stadiumSelectOptions(d.stadium, d.home, d.away)}</select>
+          <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;color:var(--text-dim)">
+            <input type="checkbox" ${d.predictOpen?'checked':''} onchange="prUpdateRoundDraft('${m.id}','predictOpen',this.checked)">
+            ${t('predictOpenLabel')}
+          </label>
         </div>`;
       }
       const scoreTxt = m.finished ? `${toAr(m.homeScore)} - ${toAr(m.awayScore)}` : '–';
+      const predictOpen = m.predictOpen !== false;
       return `
       <div class="pr-match" style="flex-wrap:wrap">
         <div style="flex:1;min-width:150px">
           <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
           <div class="pr-match-time">${fmtDT(m.kickoff)} — <span class="pr-tag ${m.finished?'closed':'open'}">${m.finished?t('finished'):t('resultPending')}</span></div>
           ${m.stadium ? `<div class="pr-match-time">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}
+          <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12.5px;color:var(--text-dim)">
+            <input type="checkbox" ${predictOpen?'checked':''} onchange="prToggleMatchPredictOpen('${rnd.id}','${m.id}',this.checked)">
+            ${t('predictOpenLabel')}
+          </label>
         </div>
         <div class="pr-score-readonly">${scoreTxt}</div>
       </div>`;
@@ -83,9 +92,21 @@ function makeRoundDraftEntry(m){
     kickoff: m.kickoff ? toLocalDatetimeValue(new Date(m.kickoff)) : '',
     homeScore: m.homeScore != null ? String(m.homeScore) : '',
     awayScore: m.awayScore != null ? String(m.awayScore) : '',
-    stadium: m.stadium || matchStadiumOptions(m.home, m.away)[0] || ''
+    stadium: m.stadium || matchStadiumOptions(m.home, m.away)[0] || '',
+    predictOpen: m.predictOpen !== false
   };
 }
+window.prToggleMatchPredictOpen = async function(roundId, matchId, checked){
+  const rnd = state.rounds.find(r => r.id === roundId);
+  if(!rnd) return;
+  const m = rnd.matches.find(x => x.id === matchId);
+  if(!m) return;
+  const prev = m.predictOpen;
+  m.predictOpen = checked;
+  const ok = await sSet('rounds', state.rounds);
+  if(!ok){ m.predictOpen = prev; prToast(t('saveErrRetry'), true); }
+  render();
+};
 window.prStartEditRound = function(roundId){
   const rnd = state.rounds.find(r => r.id === roundId);
   if(!rnd) return;
@@ -99,6 +120,7 @@ window.prUpdateRoundDraft = function(matchId, field, val){
   const d = state.roundEditDraft[matchId];
   if(!d) return;
   if(field === 'homeScore' || field === 'awayScore') d[field] = toWest(val).replace(/[^0-9]/g,'');
+  else if(field === 'predictOpen') d[field] = !!val;
   else d[field] = val;
   if(field === 'home' || field === 'away'){
     const opts = matchStadiumOptions(d.home, d.away);
@@ -113,12 +135,13 @@ window.prSaveRoundEdits = async function(roundId){
     const d = state.roundEditDraft[m.id];
     if(!d || !d.home.trim() || !d.away.trim()){ prToast(t('enterBothTeams'), true); return; }
   }
-  const backups = rnd.matches.map(m => ({ id:m.id, home:m.home, away:m.away, kickoff:m.kickoff, homeScore:m.homeScore, awayScore:m.awayScore, finished:m.finished, stadium:m.stadium }));
+  const backups = rnd.matches.map(m => ({ id:m.id, home:m.home, away:m.away, kickoff:m.kickoff, homeScore:m.homeScore, awayScore:m.awayScore, finished:m.finished, stadium:m.stadium, predictOpen:m.predictOpen }));
   rnd.matches.forEach(m => {
     const d = state.roundEditDraft[m.id];
     m.home = d.home.trim(); m.away = d.away.trim();
     m.kickoff = d.kickoff ? new Date(d.kickoff).toISOString() : null;
     m.stadium = (d.stadium || '').trim();
+    m.predictOpen = d.predictOpen !== false;
     if(d.homeScore !== '' && d.awayScore !== ''){
       m.homeScore = Number(d.homeScore); m.awayScore = Number(d.awayScore); m.finished = true;
     }
@@ -127,7 +150,7 @@ window.prSaveRoundEdits = async function(roundId){
   if(!ok){
     rnd.matches.forEach(m => {
       const b = backups.find(x => x.id === m.id);
-      m.home = b.home; m.away = b.away; m.kickoff = b.kickoff; m.homeScore = b.homeScore; m.awayScore = b.awayScore; m.finished = b.finished; m.stadium = b.stadium;
+      m.home = b.home; m.away = b.away; m.kickoff = b.kickoff; m.homeScore = b.homeScore; m.awayScore = b.awayScore; m.finished = b.finished; m.stadium = b.stadium; m.predictOpen = b.predictOpen;
     });
     prToast(t('saveErrRetry'), true);
   } else {
@@ -149,6 +172,10 @@ function renderDraftMatch(m, idx){
     <input class="pr-input" type="datetime-local" value="${m.kickoff||''}" oninput="prUpdateDraft(${idx},'kickoff',this.value)" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif">
     <label class="pr-label">🏟️ ${t('stadiumLabel')}</label>
     <select class="pr-select" onchange="prUpdateDraft(${idx},'stadium',this.value)" style="width:100%">${stadiumSelectOptions(m.stadium, m.home, m.away)}</select>
+    <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;color:var(--text-dim)">
+      <input type="checkbox" ${m.predictOpen!==false?'checked':''} onchange="prUpdateDraft(${idx},'predictOpen',this.checked)">
+      ${t('predictOpenLabel')}
+    </label>
   </div>`;
 }
 
@@ -204,7 +231,7 @@ window.prParsePastedFixtures = function(){
         const pad = n => String(n).padStart(2,'0');
         kickoff = `${y}-${pad(mo)}-${pad(d)}T${timeStr || '19:00'}`;
       }
-      parsedMatches.push({ home, away, kickoff, stadium: matchStadiumOptions(home, away)[0] || '' });
+      parsedMatches.push({ home, away, kickoff, stadium: matchStadiumOptions(home, away)[0] || '', predictOpen: true });
     } else if(!roundRe.test(line) && !isoM && !dmM){
       // a line with no teams, no round marker, no date — likely noise, ignore silently
     } else if(uniqueTeams.length === 1){
@@ -233,10 +260,10 @@ window.prParsePastedFixtures = function(){
   render();
 };
 
-window.prAddDraftMatch = function(){ state.draftMatches.push({ home:'', away:'', kickoff:'' }); render(); };
+window.prAddDraftMatch = function(){ state.draftMatches.push({ home:'', away:'', kickoff:'', predictOpen:true }); render(); };
 window.prRemoveDraft = function(idx){ state.draftMatches.splice(idx,1); render(); };
 window.prUpdateDraft = function(idx, field, val){
-  state.draftMatches[idx][field] = val;
+  state.draftMatches[idx][field] = field === 'predictOpen' ? !!val : val;
   if(field === 'kickoff' && val){
     // matches in a round are chronological — carry this kickoff forward as the
     // default for any later rows that don't have their own time set yet
@@ -259,7 +286,7 @@ window.prSaveRound = async function(){
   for(const m of state.draftMatches){ if(!m.home.trim() || !m.away.trim()){ document.getElementById('ar-err').textContent = t('teamNamesValidation'); return; } }
   const newRound = {
     id: uid('rd'), name,
-    matches: state.draftMatches.map(m => ({ id: uid('mt'), home: m.home.trim(), away: m.away.trim(), kickoff: m.kickoff ? new Date(m.kickoff).toISOString() : null, stadium: (m.stadium||'').trim(), homeScore: null, awayScore: null, finished: false }))
+    matches: state.draftMatches.map(m => ({ id: uid('mt'), home: m.home.trim(), away: m.away.trim(), kickoff: m.kickoff ? new Date(m.kickoff).toISOString() : null, stadium: (m.stadium||'').trim(), predictOpen: m.predictOpen !== false, homeScore: null, awayScore: null, finished: false }))
   };
   state.rounds.push(newRound);
   const ok = await sSet('rounds', state.rounds);
