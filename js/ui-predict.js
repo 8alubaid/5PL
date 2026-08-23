@@ -4,7 +4,7 @@ import { esc, prToast } from './utils.js';
 import { toAr, toWest, roundDisplayName } from './i18n.js';
 import { teamName, teamPairHTML, teamBadgeHTML, drawBadgeHTML, stadiumName } from './data.js';
 import { isRoundLocked, calcRoundScore, matchOutcome, findOpenRoundId, fmtDT } from './scoring.js';
-import { sSet } from './api.js';
+import { savePrediction } from './api.js';
 import { render } from './main.js';
 
 function initDraft(rnd){
@@ -146,11 +146,11 @@ window.prSavePredictions = async function(roundId){
   if(isRoundLocked(rnd)){ prToast(t('roundLockedToast'), true); render(); return; }
   const missing = rnd.matches.some(m => !state.predictDraft[m.id] || !state.predictDraft[m.id].outcome);
   if(missing){ document.getElementById('predict-msg').textContent = t('validationPickAll'); return; }
-  const mine = state.predictions[state.session.playerId] ? {...state.predictions[state.session.playerId]} : {};
+  const matchPredictions = {};
   rnd.matches.forEach(m => {
     const d = state.predictDraft[m.id];
     const hasExact = d.isExact && d.exactHome !== '' && d.exactHome != null && d.exactAway !== '' && d.exactAway != null;
-    mine[m.id] = {
+    matchPredictions[m.id] = {
       outcome: d.outcome,
       exact: hasExact ? { home: Number(d.exactHome), away: Number(d.exactAway) } : null
     };
@@ -159,8 +159,15 @@ window.prSavePredictions = async function(roundId){
   const btnOriginalLabel = btn ? btn.textContent : '';
   if(btn){ btn.disabled = true; btn.textContent = t('savingPredictions'); }
   document.getElementById('predict-msg').textContent = '';
-  state.predictions[state.session.playerId] = mine;
-  const ok = await sSet('predictions', state.predictions);
+  // The backend merges just this player's picks into whatever's currently saved,
+  // under a lock — so two players saving around the same time (very common right
+  // before a round locks) can no longer silently overwrite each other.
+  const ok = await savePrediction(state.session.playerId, matchPredictions);
+  if(ok){
+    const mine = state.predictions[state.session.playerId] ? {...state.predictions[state.session.playerId]} : {};
+    Object.assign(mine, matchPredictions);
+    state.predictions[state.session.playerId] = mine;
+  }
   if(btn){ btn.disabled = false; btn.textContent = btnOriginalLabel; }
   document.getElementById('predict-msg').textContent = ok ? t('savedOk') : t('savedErr');
   prToast(ok ? t('savedOk') : t('savedErr'), !ok);
