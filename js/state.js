@@ -5,7 +5,7 @@ export const FIXED_TITLE_EN = 'Tent League 2026/2027';
 export const FIXED_ADMIN_PIN = '13579';
 
 // ===== ضع رابط نشر Google Apps Script هنا بعد النشر (خطوات النشر بالأسفل في الشات) =====
-export const API_URL = 'https://script.google.com/macros/s/AKfycbycf4v0XXzlH3v4D-zOarJ507Qv14mryBjU-U1oysUp1pmuMoZ5iyYerC60Mgmr-p4F/exec';
+export const API_URL = 'https://script.google.com/macros/s/AKfycbzOCqf1n2q79COXQG7GpdqFMOwHnE544QG-Hc1uoBKl53IVqixV_vygEK4yFZ76SE_I/exec';
 
 // Single shared mutable state object — modules import `state` and mutate its
 // properties directly (never reassign `state` itself, so the shared reference
