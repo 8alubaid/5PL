@@ -29,6 +29,7 @@ export const state = {
   lastStorageError: '',
   predictDraft: {},
   predictDraftRoundId: null,
+  predictViewMode: 'edit',
   editingRoundId: null,
   roundEditDraft: {},
   editingPlayerId: null

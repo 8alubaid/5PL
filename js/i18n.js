@@ -39,6 +39,8 @@ export const I18N = {
   roundLockedToast: { ar:'الجولة بدأت وانقفلت التوقعات', en:'This round has started — predictions are locked' },
   predictionsNotOpenYet: { ar:'التوقع لهذي المباراة لسا ما انفتح', en:'Predictions for this match aren\'t open yet' },
   predictOpenLabel: { ar:'مفتوحة للتوقع', en:'Open for predictions' },
+  editPredictions: { ar:'تعديل توقعاتي ✏️', en:'Edit My Predictions ✏️' },
+  savedPredictionsTitle: { ar:'✅ توقعاتك محفوظة', en:'✅ Your predictions are saved' },
   noPlayersYet: { ar:'ما فيه لاعبين مسجلين بعد.', en:'No players registered yet.' },
   overallStandings: { ar:'🏅 الترتيب العام', en:'🏅 Overall Standings' },
   colPlayer: { ar:'اللاعب', en:'Player' },

@@ -19,6 +19,12 @@ function initDraft(rnd){
       exactAway: p && p.exact ? p.exact.away : ''
     };
   });
+  // Default to the read-only summary if every currently-open match already has a
+  // saved pick — that's the common case of just checking back on a round you
+  // already finished, not one you're still filling in.
+  const predictable = rnd.matches.filter(m => isMatchPredictable(m));
+  const allSaved = predictable.length > 0 && predictable.every(m => myPreds[m.id] && myPreds[m.id].outcome);
+  state.predictViewMode = allSaved ? 'summary' : 'edit';
 }
 function outcomeLabel(side, m){
   if(side === 'draw') return t('draw');
@@ -70,6 +76,22 @@ function renderPendingRow(m){
   </div>`;
 }
 
+function renderSummaryRow(m){
+  const d = state.predictDraft[m.id] || {};
+  let txt = d.outcome ? outcomeLabel(d.outcome, m) : t('noPrediction');
+  if(d.isExact && d.exactHome !== '' && d.exactHome != null && d.exactAway !== '' && d.exactAway != null){
+    txt += ` (🎯 ${toAr(d.exactHome)}-${toAr(d.exactAway)})`;
+  }
+  return `<div style="padding:12px 6px;border-bottom:1px dashed rgba(255,255,255,0.08)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+      <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
+      <span class="pr-match-time">${fmtDT(m.kickoff)}</span>
+    </div>
+    ${m.stadium ? `<div class="pr-hint" style="margin:-2px 0 6px">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}
+    <div class="pr-hint">✅ ${t('yourPredictionPrefix')}<b style="color:var(--text)">${txt}</b></div>
+  </div>`;
+}
+
 function renderPredictRow(m){
   const d = state.predictDraft[m.id] || { outcome:null, isExact:false, exactHome:'', exactAway:'' };
   const btn = (side, badge, label) => `<button type="button" class="pr-outcome-btn ${d.outcome===side?'active':''}" onclick="prPickOutcome('${m.id}','${side}')">${badge}<span class="pr-outcome-label">${label}</span></button>`;
@@ -114,7 +136,7 @@ export function renderPredictTab(){
   const rows = rnd.matches.map(m => {
     if(m.finished || isMatchStarted(m)) return renderRevealedRow(m);
     if(!isMatchPredictable(m)) return renderPendingRow(m);
-    return renderPredictRow(m);
+    return state.predictViewMode === 'summary' ? renderSummaryRow(m) : renderPredictRow(m);
   }).join('');
 
   const anyPredictable = rnd.matches.some(m => isMatchPredictable(m));
@@ -135,7 +157,11 @@ export function renderPredictTab(){
       <div class="pr-hint" style="margin-bottom:10px">${t('predictHint')}</div>
       ${scoreHint ? `<div class="pr-hint" style="margin-bottom:10px">${scoreHint}</div>` : ''}
       ${rows}
-      ${anyPredictable ? `
+      ${anyPredictable && state.predictViewMode === 'summary' ? `
+      <div style="margin-top:14px;display:flex;justify-content:flex-end">
+        <button class="pr-btn ghost" onclick="prEditPredictions()">${t('editPredictions')}</button>
+      </div>` : ''}
+      ${anyPredictable && state.predictViewMode !== 'summary' ? `
       <div style="margin-top:14px;display:flex;justify-content:flex-end">
         <button class="pr-btn" id="predict-save-btn" onclick="prSavePredictions('${rnd.id}')">${t('savePredictions')}</button>
       </div>
@@ -144,6 +170,7 @@ export function renderPredictTab(){
 }
 
 window.prSelectRound = function(id){ state.selectedRoundId = id; state.predictDraftRoundId = null; render(); };
+window.prEditPredictions = function(){ state.predictViewMode = 'edit'; render(); };
 window.prPickOutcome = function(matchId, side){
   if(!state.predictDraft[matchId]) state.predictDraft[matchId] = { outcome:null, isExact:false, exactHome:'', exactAway:'' };
   state.predictDraft[matchId].outcome = side;
@@ -190,8 +217,15 @@ window.prSavePredictions = async function(roundId){
     const mine = state.predictions[state.session.playerId] ? {...state.predictions[state.session.playerId]} : {};
     Object.assign(mine, matchPredictions);
     state.predictions[state.session.playerId] = mine;
+    // Switch to the read-only summary so the page visibly changes after a save —
+    // seeing the exact same editable form was leaving players unsure whether
+    // their click actually registered.
+    state.predictViewMode = 'summary';
+    render();
+    prToast(t('savedOk'));
+    return;
   }
   if(btn){ btn.disabled = false; btn.textContent = btnOriginalLabel; }
-  document.getElementById('predict-msg').textContent = ok ? t('savedOk') : t('savedErr');
-  prToast(ok ? t('savedOk') : t('savedErr'), !ok);
+  document.getElementById('predict-msg').textContent = t('savedErr');
+  prToast(t('savedErr'), true);
 };
