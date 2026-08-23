@@ -37,7 +37,7 @@ export const I18N = {
   savedOk: { ar:'تم حفظ توقعاتك ✅', en:'Your predictions were saved ✅' },
   savedErr: { ar:'صار خطأ أثناء الحفظ، حاول مرة ثانية ⚠️', en:'Something went wrong saving — try again ⚠️' },
   roundLockedToast: { ar:'الجولة بدأت وانقفلت التوقعات', en:'This round has started — predictions are locked' },
-  predictionsNotOpenYet: { ar:'التوقع لهذي المباراة مقفل حاليًا', en:'Voting has closed for this match' },
+  predictionsNotOpenYet: { ar:'التوقع لهذي المباراة مقفل', en:'Voting has closed for this match' },
   predictOpenLabel: { ar:'مفتوحة للتوقع', en:'Open for predictions' },
   editPredictions: { ar:'تعديل توقعاتي ✏️', en:'Edit My Predictions ✏️' },
   savedPredictionsTitle: { ar:'✅ توقعاتك محفوظة', en:'✅ Your predictions are saved' },
