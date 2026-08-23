@@ -84,7 +84,10 @@ function injectDatalist(){
 window.prBoot = async function(){
   state.lang = loadLang();
   applyDirAttrs();
-  root.innerHTML = `<div class="pr-center-screen"><div class="pr-loader"><span></span><span></span><span></span></div></div>`;
+  root.innerHTML = `<div class="pr-center-screen"><div class="pr-boot-screen">
+    <img src="logo.png" alt="" class="pr-logo pr-logo-lg">
+    <div class="pr-loader"><span></span><span></span><span></span></div>
+  </div></div>`;
   injectDatalist();
   if(API_URL.indexOf('PASTE_YOUR') === 0){ state.storageHealthy = false; render(); return; }
   await loadAll();
