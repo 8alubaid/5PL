@@ -30,6 +30,7 @@ export const state = {
   predictDraft: {},
   predictDraftRoundId: null,
   predictViewMode: 'edit',
+  lastFeedRefresh: null,
   editingRoundId: null,
   roundEditDraft: {},
   editingPlayerId: null

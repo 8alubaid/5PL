@@ -105,10 +105,20 @@ window.prBoot = async function(){
 };
 
 window.prBoot();
-setInterval(() => {
+setInterval(async () => {
   // Skip while the organizer is on the admin tab — its forms (match edit, score entry,
   // add player, etc.) aren't wired to a live draft, so an auto re-render here would
   // silently wipe whatever they're mid-typing before they hit save.
   if(state.session.isAdmin && state.activeTab === 'admin') return;
+  // The organizer's "who's predicted" live feed needs an actual re-fetch to show
+  // new submissions — everywhere else this tick only re-renders in-memory state
+  // (e.g. to catch a match crossing its kickoff time), so it stays a single
+  // lightweight request instead of every open tab polling the backend.
+  if(state.session.isAdmin && state.activeTab === 'history'){
+    await loadAll();
+    state.lastFeedRefresh = Date.now();
+    render();
+    return;
+  }
   if(state.config && (state.session.playerId || state.session.isAdmin)) render();
 }, 30000);
