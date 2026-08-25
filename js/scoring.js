@@ -46,17 +46,36 @@ export function findOpenRoundId(){
   return state.rounds.length ? state.rounds[state.rounds.length-1].id : null;
 }
 
-// A match is only predictable while it hasn't kicked off, hasn't been marked
-// finished, and the organizer hasn't explicitly closed it via its own switch
-// (used to hold back a match that's much later than the rest of its round).
 export function isMatchStarted(m){
   if(!m.kickoff) return false;
   return new Date().getTime() >= new Date(m.kickoff).getTime();
 }
-export function isMatchPredictable(m){
-  if(m.finished) return false;
-  if(m.predictOpen === false) return false;
-  return !isMatchStarted(m);
+
+// Matches the organizer has never touched (predictOpen left unset) lock
+// together as a whole round, exactly like the app has always done — once the
+// earliest of them kicks off, the rest are revealed too, even if their own
+// kickoff hasn't happened yet. This is what stops a normal round from leaking
+// predictions match-by-match as each one starts.
+//
+// A match the organizer has explicitly opened or closed (predictOpen
+// true/false) ignores this curtain entirely and is judged purely on its own
+// switch state and kickoff — that's what lets one match much later than the
+// rest of its round be held back, then reopened independently, without
+// waiting on (or being dragged along by) everything else in the round.
+export function isRoundCurtainPassed(rnd){
+  const untouched = rnd.matches.filter(m => m.predictOpen == null && m.kickoff);
+  const pool = untouched.length ? untouched : rnd.matches.filter(m => m.kickoff);
+  if(!pool.length) return false;
+  const earliest = Math.min(...pool.map(m => new Date(m.kickoff).getTime()));
+  return new Date().getTime() >= earliest;
+}
+
+export function getMatchState(m, curtainPassed){
+  if(m.finished) return 'revealed';
+  if(isMatchStarted(m)) return 'revealed';
+  if(m.predictOpen === false) return 'pending';
+  if(m.predictOpen === true) return 'predict';
+  return curtainPassed ? 'revealed' : 'predict';
 }
 
 export function fmtDT(iso){

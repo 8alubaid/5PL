@@ -138,10 +138,17 @@ window.prSaveRoundEdits = async function(roundId){
   const backups = rnd.matches.map(m => ({ id:m.id, home:m.home, away:m.away, kickoff:m.kickoff, homeScore:m.homeScore, awayScore:m.awayScore, finished:m.finished, stadium:m.stadium, predictOpen:m.predictOpen }));
   rnd.matches.forEach(m => {
     const d = state.roundEditDraft[m.id];
+    // A match that's never had its switch touched (predictOpen left unset)
+    // locks together with the rest of its round like normal. Explicitly
+    // checking it back on for a match that *was* touched is a deliberate
+    // reopen, so that one keeps ignoring the round's timing from here on —
+    // otherwise re-checking the box after closing it would just silently
+    // fall back to "untouched" and get swept into the round lock again.
+    const wasTouched = m.predictOpen != null;
     m.home = d.home.trim(); m.away = d.away.trim();
     m.kickoff = d.kickoff ? new Date(d.kickoff).toISOString() : null;
     m.stadium = (d.stadium || '').trim();
-    m.predictOpen = d.predictOpen !== false;
+    m.predictOpen = d.predictOpen === false ? false : (wasTouched ? true : undefined);
     if(d.homeScore !== '' && d.awayScore !== ''){
       m.homeScore = Number(d.homeScore); m.awayScore = Number(d.awayScore); m.finished = true;
     }
@@ -286,7 +293,10 @@ window.prSaveRound = async function(){
   for(const m of state.draftMatches){ if(!m.home.trim() || !m.away.trim()){ document.getElementById('ar-err').textContent = t('teamNamesValidation'); return; } }
   const newRound = {
     id: uid('rd'), name,
-    matches: state.draftMatches.map(m => ({ id: uid('mt'), home: m.home.trim(), away: m.away.trim(), kickoff: m.kickoff ? new Date(m.kickoff).toISOString() : null, stadium: (m.stadium||'').trim(), predictOpen: m.predictOpen !== false, homeScore: null, awayScore: null, finished: false }))
+    // A freshly-created match has nothing to "reopen" — checked just means it
+    // follows the round's normal timing (predictOpen left unset), unchecked
+    // means the organizer is deliberately holding it closed from the start.
+    matches: state.draftMatches.map(m => ({ id: uid('mt'), home: m.home.trim(), away: m.away.trim(), kickoff: m.kickoff ? new Date(m.kickoff).toISOString() : null, stadium: (m.stadium||'').trim(), predictOpen: m.predictOpen === false ? false : undefined, homeScore: null, awayScore: null, finished: false }))
   };
   state.rounds.push(newRound);
   const ok = await sSet('rounds', state.rounds);
