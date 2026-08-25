@@ -31,17 +31,6 @@ function outcomeLabel(side, m){
   return side === 'home' ? esc(teamName(m.home)) : esc(teamName(m.away));
 }
 
-// Only one match per round can carry the exact-score bonus. Matches close
-// independently now, so a player can save an exact pick on an early match,
-// then come back once later matches open up — that earlier match is already
-// locked (no longer predictable) and its saved exact can never be changed
-// again, so the round's exact bonus is considered "spent" on it.
-function lockedExactMatchId(rnd, excludeId){
-  const myPreds = state.predictions[state.session.playerId] || {};
-  const m = rnd.matches.find(x => x.id !== excludeId && !isMatchPredictable(x) && myPreds[x.id] && myPreds[x.id].exact);
-  return m ? m.id : null;
-}
-
 function renderRevealedRow(m){
   const matchDecided = m.finished && m.homeScore != null && m.awayScore != null;
   const realOutcome = matchDecided ? matchOutcome(m) : null;
@@ -103,7 +92,7 @@ function renderSummaryRow(m){
   </div>`;
 }
 
-function renderPredictRow(m, exactLocked){
+function renderPredictRow(m){
   const d = state.predictDraft[m.id] || { outcome:null, isExact:false, exactHome:'', exactAway:'' };
   const btn = (side, badge, label) => `<button type="button" class="pr-outcome-btn ${d.outcome===side?'active':''}" onclick="prPickOutcome('${m.id}','${side}')">${badge}<span class="pr-outcome-label">${label}</span></button>`;
   return `
@@ -118,8 +107,6 @@ function renderPredictRow(m, exactLocked){
       ${btn('draw', drawBadgeHTML('pr-team-badge-lg'), t('draw'))}
       ${btn('away', teamBadgeHTML(m.away,'pr-team-badge-lg'), esc(teamName(m.away)))}
     </div>
-    ${exactLocked ? `
-    <div class="pr-hint" style="margin-top:8px">${t('exactUsedElsewhere')}</div>` : `
     <label class="pr-exact-toggle">
       <input type="checkbox" ${d.isExact?'checked':''} onchange="prToggleExact('${m.id}', this.checked)">
       ${t('exactToggleLabel')}
@@ -129,7 +116,7 @@ function renderPredictRow(m, exactLocked){
       <input type="text" inputmode="numeric" maxlength="2" value="${toAr(d.exactHome)}" oninput="prDigitInput(this); prSetExactVal('${m.id}','home',this.value)">
       <span class="pr-score-dash">–</span>
       <input type="text" inputmode="numeric" maxlength="2" value="${toAr(d.exactAway)}" oninput="prDigitInput(this); prSetExactVal('${m.id}','away',this.value)">
-    </div>` : ''}`}
+    </div>` : ''}
   </div>`;
 }
 
@@ -149,7 +136,7 @@ export function renderPredictTab(){
   const rows = rnd.matches.map(m => {
     if(m.finished || isMatchStarted(m)) return renderRevealedRow(m);
     if(!isMatchPredictable(m)) return renderPendingRow(m);
-    return state.predictViewMode === 'summary' ? renderSummaryRow(m) : renderPredictRow(m, !!lockedExactMatchId(rnd, m.id));
+    return state.predictViewMode === 'summary' ? renderSummaryRow(m) : renderPredictRow(m);
   }).join('');
 
   const anyPredictable = rnd.matches.some(m => isMatchPredictable(m));
@@ -191,8 +178,6 @@ window.prPickOutcome = function(matchId, side){
 };
 window.prToggleExact = function(matchId, checked){
   if(checked){
-    const rnd = state.rounds.find(r => r.id === state.selectedRoundId);
-    if(rnd && lockedExactMatchId(rnd, matchId)){ prToast(t('exactUsedElsewhere'), true); render(); return; }
     // only one match per round can be the exact pick — clear others
     Object.keys(state.predictDraft).forEach(id => { state.predictDraft[id].isExact = false; });
     state.predictDraft[matchId].isExact = true;
@@ -214,10 +199,7 @@ window.prSavePredictions = async function(roundId){
   const matchPredictions = {};
   predictableMatches.forEach(m => {
     const d = state.predictDraft[m.id];
-    // Defensive: the UI already hides the exact toggle once another match has
-    // locked in the round's bonus, but never persist a conflicting one anyway.
-    const wantsExact = d.isExact && d.exactHome !== '' && d.exactHome != null && d.exactAway !== '' && d.exactAway != null;
-    const hasExact = wantsExact && !lockedExactMatchId(rnd, m.id);
+    const hasExact = d.isExact && d.exactHome !== '' && d.exactHome != null && d.exactAway !== '' && d.exactAway != null;
     matchPredictions[m.id] = {
       outcome: d.outcome,
       exact: hasExact ? { home: Number(d.exactHome), away: Number(d.exactAway) } : null
