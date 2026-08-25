@@ -31,6 +31,7 @@ export const I18N = {
   predictHint: { ar:'اختر فوز/تعادل/خسارة لكل مباراة. ٥ صحيحة أو أكثر = ٣ نقاط، ٨ أو أكثر = ٥ نقاط. اختر مباراة وحدة بس تكتب لها نتيجة دقيقة (بونص +١ منفصل). توقعاتك لمباراة معينة سرّية لين تبدأ تلك المباراة.', en:'Pick win / draw / loss for every match. 5+ correct = 3 points, 8+ correct = 5 points. Pick one match to also call its exact score (a separate +1 bonus). Your pick for a match stays private until that match kicks off.' },
   draw: { ar:'تعادل', en:'Draw' },
   exactToggleLabel: { ar:'🎯 اختر هذي كمباراة النتيجة الدقيقة (نقطة بونص إضافية)', en:'🎯 Pick this match for the exact-score bonus (+1 extra point)' },
+  exactUsedElsewhere: { ar:'🎯 سبق واستخدمت بونص النتيجة الدقيقة على مباراة ثانية بهالجولة', en:"🎯 You've already used this round's exact-score bonus on another match" },
   savePredictions: { ar:'حفظ التوقعات 💾', en:'Save Predictions 💾' },
   savingPredictions: { ar:'جارٍ الحفظ...', en:'Saving...' },
   validationPickAll: { ar:'اختر فوز/تعادل/خسارة لكل مباراة قبل الحفظ.', en:'Pick win / draw / loss for every match before saving.' },
