@@ -3,7 +3,7 @@ import { t } from './i18n.js';
 import { esc, prToast } from './utils.js';
 import { toAr, toWest, roundDisplayName } from './i18n.js';
 import { teamName, teamPairHTML, teamBadgeHTML, drawBadgeHTML, stadiumName } from './data.js';
-import { calcRoundScore, matchOutcome, findOpenRoundId, fmtDT, getMatchState, isRoundCurtainPassed } from './scoring.js';
+import { calcRoundScore, matchOutcome, findOpenRoundId, fmtDT, isMatchPredictable, isMatchStarted } from './scoring.js';
 import { savePrediction } from './api.js';
 import { render } from './main.js';
 
@@ -22,8 +22,7 @@ function initDraft(rnd){
   // Default to the read-only summary if every currently-open match already has a
   // saved pick — that's the common case of just checking back on a round you
   // already finished, not one you're still filling in.
-  const curtainPassed = isRoundCurtainPassed(rnd);
-  const predictable = rnd.matches.filter(m => getMatchState(m, curtainPassed) === 'predict');
+  const predictable = rnd.matches.filter(m => isMatchPredictable(m));
   const allSaved = predictable.length > 0 && predictable.every(m => myPreds[m.id] && myPreds[m.id].outcome);
   state.predictViewMode = allSaved ? 'summary' : 'edit';
 }
@@ -129,23 +128,19 @@ export function renderPredictTab(){
 
   if(!state.predictDraftRoundId || state.predictDraftRoundId !== rnd.id){ initDraft(rnd); state.predictDraftRoundId = rnd.id; }
 
-  // Matches the organizer has never touched via the switch lock together as a
-  // whole round, same as always — once the earliest of them starts, the rest
-  // are revealed too. A match the organizer has explicitly opened or closed
-  // ignores that and is judged purely on its own switch state and kickoff,
-  // which is what lets one match much later than its round stay held back (or
-  // get reopened) independently of everything else.
-  const curtainPassed = isRoundCurtainPassed(rnd);
-  const matchStates = rnd.matches.map(m => getMatchState(m, curtainPassed));
-  const rows = rnd.matches.map((m, i) => {
-    const st = matchStates[i];
-    if(st === 'revealed') return renderRevealedRow(m);
-    if(st === 'pending') return renderPendingRow(m);
+  // Each match is judged on its own — finished or already kicked off means its
+  // picks are revealed to everyone; otherwise it's either open for a prediction
+  // or, if the organizer has explicitly closed it early (predictOpen:false),
+  // shown as "not open yet". A match closes at its own kickoff regardless of
+  // what else in the round has already started.
+  const rows = rnd.matches.map(m => {
+    if(m.finished || isMatchStarted(m)) return renderRevealedRow(m);
+    if(!isMatchPredictable(m)) return renderPendingRow(m);
     return state.predictViewMode === 'summary' ? renderSummaryRow(m) : renderPredictRow(m);
   }).join('');
 
-  const anyPredictable = matchStates.some(st => st === 'predict');
-  const anyRevealed = matchStates.some(st => st === 'revealed');
+  const anyPredictable = rnd.matches.some(m => isMatchPredictable(m));
+  const anyRevealed = rnd.matches.some(m => m.finished || isMatchStarted(m));
 
   let scoreHint = '';
   if(anyRevealed){
@@ -197,8 +192,7 @@ window.prSetExactVal = function(matchId, side, val){
 };
 window.prSavePredictions = async function(roundId){
   const rnd = state.rounds.find(r => r.id === roundId);
-  const curtainPassed = isRoundCurtainPassed(rnd);
-  const predictableMatches = rnd.matches.filter(m => getMatchState(m, curtainPassed) === 'predict');
+  const predictableMatches = rnd.matches.filter(m => isMatchPredictable(m));
   if(!predictableMatches.length){ prToast(t('roundLockedToast'), true); render(); return; }
   const missing = predictableMatches.some(m => !state.predictDraft[m.id] || !state.predictDraft[m.id].outcome);
   if(missing){ document.getElementById('predict-msg').textContent = t('validationPickAll'); return; }

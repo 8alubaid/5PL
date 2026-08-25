@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { t, toAr, roundDisplayName } from './i18n.js';
 import { teamPairHTML, stadiumName, teamName } from './data.js';
 import { esc } from './utils.js';
-import { calcRoundScore, matchOutcome, getMatchState, isRoundCurtainPassed } from './scoring.js';
+import { calcRoundScore, matchOutcome, isMatchPredictable } from './scoring.js';
 import { loadAll } from './api.js';
 import { render } from './main.js';
 
@@ -19,8 +19,7 @@ function fmtTime(ts){
 function renderAdminLiveFeed(){
   if(!state.rounds.length) return `<div class="pr-card"><div class="pr-empty">${t('noRoundsYetHistory')}</div></div>`;
   const rnd = state.rounds[state.rounds.length - 1];
-  const curtainPassed = isRoundCurtainPassed(rnd);
-  const openMatches = rnd.matches.filter(m => getMatchState(m, curtainPassed) === 'predict');
+  const openMatches = rnd.matches.filter(m => isMatchPredictable(m));
   const activePlayers = state.players.filter(p => !p.suspended);
 
   const refreshRow = `<div class="pr-flex-between" style="margin-bottom:6px;flex-wrap:wrap;gap:8px">
