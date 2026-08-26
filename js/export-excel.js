@@ -23,6 +23,60 @@ window.prExportExcel = async function(){
   const wb = XLSX.utils.book_new();
   const en = state.lang === 'en';
 
+  const activePlayers = state.players.filter(p => !p.suspended);
+  const totalMatches = state.rounds.reduce((sum, r) => sum + r.matches.length, 0);
+  let predictionsSubmitted = 0, exactPicksMade = 0, exactHits = 0;
+  const predCountByPlayer = {};
+  state.players.forEach(pl => {
+    let count = 0;
+    state.rounds.forEach(r => r.matches.forEach(m => {
+      const pred = (state.predictions[pl.id] || {})[m.id];
+      if(!pred || !pred.outcome) return;
+      count++; predictionsSubmitted++;
+      if(pred.exact){
+        exactPicksMade++;
+        if(m.finished && Number(pred.exact.home) === m.homeScore && Number(pred.exact.away) === m.awayScore) exactHits++;
+      }
+    }));
+    predCountByPlayer[pl.id] = count;
+  });
+  const mostActivePredictor = state.players.reduce((best, p) => (predCountByPlayer[p.id]||0) > (best ? predCountByPlayer[best.id] : -1) ? p : best, null);
+  const mostFrequentVisitor = state.players.reduce((best, p) => (p.visitCount||0) > (best ? (best.visitCount||0) : -1) ? p : best, null);
+  const totalVisits = state.players.reduce((sum, p) => sum + (p.visitCount||0), 0);
+  const totalPossible = activePlayers.length * totalMatches;
+  const topScorer = computeStandings()[0] || null;
+
+  const statRows = en ? [
+    { Statistic: 'Total players', Value: state.players.length },
+    { Statistic: 'Active players', Value: activePlayers.length },
+    { Statistic: 'Suspended players', Value: state.players.length - activePlayers.length },
+    { Statistic: 'Total rounds', Value: state.rounds.length },
+    { Statistic: 'Total matches', Value: totalMatches },
+    { Statistic: 'Total predictions submitted', Value: predictionsSubmitted },
+    { Statistic: 'Prediction completion rate', Value: totalPossible ? `${Math.round(predictionsSubmitted/totalPossible*100)}%` : '—' },
+    { Statistic: 'Exact-score bonuses picked', Value: exactPicksMade },
+    { Statistic: 'Exact-score bonuses hit', Value: exactHits },
+    { Statistic: 'Most active predictor', Value: mostActivePredictor ? `${mostActivePredictor.name} (${predCountByPlayer[mostActivePredictor.id]} predictions)` : '—' },
+    { Statistic: 'Total site visits logged', Value: totalVisits },
+    { Statistic: 'Most frequent visitor', Value: mostFrequentVisitor && mostFrequentVisitor.visitCount ? `${mostFrequentVisitor.name} (${mostFrequentVisitor.visitCount} visits)` : '—' },
+    { Statistic: 'Top of the standings', Value: topScorer ? `${topScorer.player.name} (${topScorer.total} pts)` : '—' }
+  ] : [
+    { الإحصائية: 'إجمالي اللاعبين', القيمة: state.players.length },
+    { الإحصائية: 'اللاعبون النشطون', القيمة: activePlayers.length },
+    { الإحصائية: 'اللاعبون الموقوفون', القيمة: state.players.length - activePlayers.length },
+    { الإحصائية: 'إجمالي الجولات', القيمة: state.rounds.length },
+    { الإحصائية: 'إجمالي المباريات', القيمة: totalMatches },
+    { الإحصائية: 'إجمالي التوقعات المُرسلة', القيمة: predictionsSubmitted },
+    { الإحصائية: 'نسبة إكمال التوقعات', القيمة: totalPossible ? `${Math.round(predictionsSubmitted/totalPossible*100)}%` : '—' },
+    { الإحصائية: 'عدد بونصات النتيجة الدقيقة المختارة', القيمة: exactPicksMade },
+    { الإحصائية: 'عدد بونصات النتيجة الدقيقة المُصابة', القيمة: exactHits },
+    { الإحصائية: 'أكثر لاعب توقع', القيمة: mostActivePredictor ? `${mostActivePredictor.name} (${predCountByPlayer[mostActivePredictor.id]} توقع)` : '—' },
+    { الإحصائية: 'إجمالي زيارات الموقع المسجّلة', القيمة: totalVisits },
+    { الإحصائية: 'أكثر لاعب زيارة', القيمة: mostFrequentVisitor && mostFrequentVisitor.visitCount ? `${mostFrequentVisitor.name} (${mostFrequentVisitor.visitCount} زيارة)` : '—' },
+    { الإحصائية: 'صاحب المركز الأول', القيمة: topScorer ? `${topScorer.player.name} (${topScorer.total} نقطة)` : '—' }
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(statRows), en ? 'Statistics' : 'الإحصائيات');
+
   const playersRows = state.players.map(p => en ? ({ Name: p.name, Email: p.email || '', PIN: p.pin || '', Status: p.suspended ? 'Suspended' : 'Active', 'Registered On': p.createdAt || '' }) : ({ الاسم: p.name, الإيميل: p.email || '', 'الرمز السري': p.pin || '', الحالة: p.suspended ? 'موقوف' : 'نشط', 'تاريخ التسجيل': p.createdAt || '' }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(playersRows.length?playersRows:[{[en?'Name':'الاسم']:''}]), en ? 'Players' : 'اللاعبون');
 

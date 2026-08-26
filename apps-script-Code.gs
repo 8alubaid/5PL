@@ -89,6 +89,33 @@ function changeAdminPin_(currentPin, newPin) {
   return { ok: false };
 }
 
+function logVisit_(playerId) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet = getSheet_();
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === 'players') {
+        var players = [];
+        try { players = JSON.parse(data[i][1]) || []; } catch (err) { players = []; }
+        var player = null;
+        for (var j = 0; j < players.length; j++) {
+          if (players[j].id === playerId) { player = players[j]; break; }
+        }
+        if (!player) return { ok: false, reason: 'not_found' };
+        player.visitCount = (player.visitCount || 0) + 1;
+        player.lastVisitAt = new Date().toISOString();
+        sheet.getRange(i + 1, 2).setValue(JSON.stringify(players));
+        return { ok: true, visitCount: player.visitCount };
+      }
+    }
+    return { ok: false, reason: 'not_found' };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 var AVATAR_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 function setPlayerAvatar_(playerId, avatarTeam) {
@@ -159,6 +186,12 @@ function doPost(e) {
   if (body.action === 'savePrediction') {
     var saveResult = savePrediction_(body.playerId, body.matchPredictions);
     return ContentService.createTextOutput(JSON.stringify(saveResult))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (body.action === 'logVisit') {
+    var visitResult = logVisit_(body.playerId);
+    return ContentService.createTextOutput(JSON.stringify(visitResult))
       .setMimeType(ContentService.MimeType.JSON);
   }
 

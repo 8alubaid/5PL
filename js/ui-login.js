@@ -4,7 +4,7 @@ import { esc } from './utils.js';
 import { root } from './dom.js';
 import { langToggleBtn } from './ui-common.js';
 import { render } from './main.js';
-import { verifyAdminPin } from './api.js';
+import { verifyAdminPin, logVisit } from './api.js';
 
 export function renderLogin(){
   root.innerHTML = `
@@ -64,5 +64,6 @@ window.prPlayerLogin = async function(){
   state.session.playerId = existing.id; state.session.playerName = existing.name;
   state.activeTab = 'predict';
   saveSession();
+  logVisit(existing.id);
   render();
 };

@@ -73,6 +73,18 @@ export async function savePrediction(playerId, matchPredictions){
   }
 }
 
+export async function logVisit(playerId){
+  try {
+    const res = await fetchWithTimeout(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'logVisit', playerId })
+    });
+    const data = await res.json();
+    return data || { ok: false };
+  } catch(e){ return { ok: false }; }
+}
+
 export async function setPlayerAvatar(playerId, avatarTeam){
   try {
     const res = await fetchWithTimeout(API_URL, {

@@ -3,7 +3,7 @@ import { t, toAr } from './i18n.js';
 import { esc, prToast } from './utils.js';
 import { root } from './dom.js';
 import { langToggleBtn, toggleLang, applyDirAttrs } from './ui-common.js';
-import { loadAll, setPlayerAvatar } from './api.js';
+import { loadAll, setPlayerAvatar, logVisit } from './api.js';
 import { renderLogin } from './ui-login.js';
 import { renderPredictTab } from './ui-predict.js';
 import { renderLeaderboardTab } from './ui-leaderboard.js';
@@ -171,7 +171,7 @@ window.prBoot = async function(){
     if(saved.isAdmin){ state.session.isAdmin = true; state.activeTab = 'admin'; }
     else if(saved.playerId){
       const p = state.players.find(x => x.id === saved.playerId);
-      if(p && !p.suspended){ state.session.playerId = p.id; state.session.playerName = p.name; state.activeTab = 'predict'; }
+      if(p && !p.suspended){ state.session.playerId = p.id; state.session.playerName = p.name; state.activeTab = 'predict'; logVisit(p.id); }
       else clearSession();
     } else { clearSession(); }
   }
