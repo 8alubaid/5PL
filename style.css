@@ -117,7 +117,10 @@ html[dir="ltr"] .pr-user-badge { padding: 6px 6px 6px 14px; }
   font-family:'Tajawal',sans-serif; flex-shrink:0;
 }
 .pr-avatar-sm { width:22px; height:22px; font-size:11px; }
-.pr-avatar-logo { background:transparent; object-fit:contain; border:1.5px solid rgba(255,255,255,0.28); }
+.pr-avatar-logo {
+  background:transparent; object-fit:contain; border-color:transparent;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.65)) drop-shadow(0 0 1px rgba(0,0,0,0.5));
+}
 .pr-user-badge-trigger {
   display:inline-flex; align-items:center; gap:9px; background:none; border:none;
   padding:0; margin:0; color:inherit; font:inherit; cursor:pointer;
@@ -222,7 +225,10 @@ html[dir="ltr"] .pr-user-badge { padding: 6px 6px 6px 14px; }
   line-height:1; transition: transform .15s var(--ease);
 }
 .pr-team-badge-lg { width:32px; height:32px; font-size:10.5px; border-width:2px; }
-img.pr-team-badge { object-fit: contain; }
+img.pr-team-badge {
+  object-fit: contain; background: transparent; border-color: transparent; box-shadow: none;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.65)) drop-shadow(0 0 1px rgba(0,0,0,0.5));
+}
 .pr-draw-badge { font-size:13px; }
 .pr-team-badge-lg.pr-draw-badge { font-size:16px; }
 .pr-exact-toggle { display:flex; align-items:center; gap:8px; font-size:12.5px; color: var(--text-dim); cursor:pointer; }
