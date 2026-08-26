@@ -102,8 +102,21 @@ export function teamBadgeHTML(ar, extraClass){
   const b = TEAM_BADGE[ar];
   const code = b ? b.code : esc((teamName(ar)||'?').trim().charAt(0));
   const c1 = b ? b.c1 : '#33413c', c2 = b ? b.c2 : '#5c716a';
-  return `<span class="pr-team-badge ${extraClass||''}" style="--bc1:${c1};--bc2:${c2}">${code}</span>`;
+  const cls = `pr-team-badge ${extraClass||''}`;
+  if(b){
+    // Falls back to the plain colored-code badge if a club's logo file is ever
+    // missing (e.g. a promoted team without a crest in img/teams/ yet).
+    return `<img src="img/teams/${b.code.toLowerCase()}.svg" alt="${esc(teamName(ar))}" class="${cls}" data-code="${code}" style="--bc1:${c1};--bc2:${c2}" onerror="prLogoFallback(this)">`;
+  }
+  return `<span class="${cls}" style="--bc1:${c1};--bc2:${c2}">${code}</span>`;
 }
+window.prLogoFallback = function(img){
+  const span = document.createElement('span');
+  span.className = img.className;
+  span.style.cssText = img.style.cssText;
+  span.textContent = img.dataset.code;
+  img.replaceWith(span);
+};
 export function drawBadgeHTML(extraClass){
   return `<span class="pr-team-badge pr-draw-badge ${extraClass||''}" style="--bc1:${DRAW_BADGE.c1};--bc2:${DRAW_BADGE.c2}">${DRAW_BADGE.code}</span>`;
 }
