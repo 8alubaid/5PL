@@ -73,6 +73,21 @@ export async function savePrediction(playerId, matchPredictions){
   }
 }
 
+export async function setPlayerAvatar(playerId, avatarTeam){
+  try {
+    const res = await fetchWithTimeout(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'setPlayerAvatar', playerId, avatarTeam })
+    });
+    const data = await res.json();
+    return data || { ok: false };
+  } catch(e){
+    state.lastStorageError = (e && e.message === 'TIMEOUT') ? 'انتهى وقت الانتظار (الاتصال بطيء جدًا أو ما استجاب)' : ((e && e.message) ? e.message : String(e));
+    return { ok: false };
+  }
+}
+
 export async function changeAdminPin(currentPin, newPin){
   try {
     const res = await fetchWithTimeout(API_URL, {

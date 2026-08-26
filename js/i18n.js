@@ -131,7 +131,13 @@ export const I18N = {
   storageNotConnectedHint: { ar:'لازم تربط الموقع بجدول Google Sheets أول (خطوة تسويها مرة وحدة بس) — رابط الـ Apps Script لسا ما انحط بالكود، أو الرابط المحطوط ما يشتغل.', en:'You need to connect the site to a Google Sheet first (a one-time setup step) — the Apps Script URL isn\'t set in the code yet, or the one that\'s there isn\'t working.' },
   connectionError: { ar:'⚠️ صار خطأ بالاتصال', en:'⚠️ Connection error' },
   connectionErrorHint: { ar:'ما قدرنا نوصل للبيانات حاليًا. جرّب تحدّث الصفحة بعد شوي.', en:'We couldn\'t reach the data right now. Try refreshing in a moment.' },
-  loadFailed: { ar:'تعذّر تحميل البيانات.', en:'Failed to load data.' }
+  loadFailed: { ar:'تعذّر تحميل البيانات.', en:'Failed to load data.' },
+  changeAvatarHint: { ar:'غيّر شعارك', en:'Change your avatar' },
+  chooseAvatarTitle: { ar:'اختر شعارك 🎨', en:'Choose your avatar 🎨' },
+  avatarNone: { ar:'بدون (الحرف الأول)', en:'None (initial)' },
+  avatarCooldownHint: { ar:'تقدر تغيّره بعد {days} يوم.', en:'You can change it again in {days} days.' },
+  avatarCooldownToast: { ar:'لسا وقت التغيير ما حان — جرّب بعدين.', en:"It's not time to change it again yet — try later." },
+  avatarSaved: { ar:'تم تحديث شعارك ✅', en:'Your avatar was updated ✅' }
 };
 
 export function t(key, vars){

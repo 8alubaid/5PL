@@ -89,6 +89,42 @@ function changeAdminPin_(currentPin, newPin) {
   return { ok: false };
 }
 
+var AVATAR_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
+function setPlayerAvatar_(playerId, avatarTeam) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet = getSheet_();
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === 'players') {
+        var players = [];
+        try { players = JSON.parse(data[i][1]) || []; } catch (err) { players = []; }
+        var player = null;
+        for (var j = 0; j < players.length; j++) {
+          if (players[j].id === playerId) { player = players[j]; break; }
+        }
+        if (!player) return { ok: false, reason: 'not_found' };
+        var now = new Date();
+        if (player.avatarChangedAt) {
+          var elapsed = now.getTime() - new Date(player.avatarChangedAt).getTime();
+          if (elapsed < AVATAR_COOLDOWN_MS) {
+            return { ok: false, reason: 'cooldown', nextAllowedAt: new Date(new Date(player.avatarChangedAt).getTime() + AVATAR_COOLDOWN_MS).toISOString() };
+          }
+        }
+        player.avatarTeam = avatarTeam || null;
+        player.avatarChangedAt = now.toISOString();
+        sheet.getRange(i + 1, 2).setValue(JSON.stringify(players));
+        return { ok: true, avatarChangedAt: player.avatarChangedAt };
+      }
+    }
+    return { ok: false, reason: 'not_found' };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function savePrediction_(playerId, matchPredictions) {
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
@@ -123,6 +159,12 @@ function doPost(e) {
   if (body.action === 'savePrediction') {
     var saveResult = savePrediction_(body.playerId, body.matchPredictions);
     return ContentService.createTextOutput(JSON.stringify(saveResult))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (body.action === 'setPlayerAvatar') {
+    var avatarResult = setPlayerAvatar_(body.playerId, body.avatarTeam);
+    return ContentService.createTextOutput(JSON.stringify(avatarResult))
       .setMimeType(ContentService.MimeType.JSON);
   }
 

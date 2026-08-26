@@ -1,16 +1,87 @@
 import { state, FIXED_TITLE_EN, API_URL, loadLang, clearSession, loadSession } from './state.js';
 import { t, toAr } from './i18n.js';
-import { esc } from './utils.js';
+import { esc, prToast } from './utils.js';
 import { root } from './dom.js';
 import { langToggleBtn, toggleLang, applyDirAttrs } from './ui-common.js';
-import { loadAll } from './api.js';
+import { loadAll, setPlayerAvatar } from './api.js';
 import { renderLogin } from './ui-login.js';
 import { renderPredictTab } from './ui-predict.js';
 import { renderLeaderboardTab } from './ui-leaderboard.js';
 import { renderHistoryTab } from './ui-history.js';
 import { renderAdminTab } from './ui-admin.js';
 import './export-excel.js';
-import { SATEAMS } from './data.js';
+import { SATEAMS, TEAM_BADGE, teamName, playerAvatarHTML } from './data.js';
+
+const AVATAR_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+function avatarCooldownRemainingMs(player){
+  if(!player || !player.avatarChangedAt) return 0;
+  return Math.max(0, AVATAR_COOLDOWN_MS - (Date.now() - new Date(player.avatarChangedAt).getTime()));
+}
+function renderAvatarPicker(){
+  const player = state.players.find(p => p.id === state.session.playerId);
+  if(!player) return '';
+  const remainingMs = avatarCooldownRemainingMs(player);
+  const draft = state.avatarDraft != null ? state.avatarDraft : (player.avatarTeam || '');
+  const days = Math.max(1, Math.ceil(remainingMs / (24*60*60*1000)));
+  const options = SATEAMS.map(team => {
+    const b = TEAM_BADGE[team];
+    return `<button type="button" class="pr-avatar-option ${draft===team?'active':''}" onclick="prPickAvatarTeam('${team}')" title="${esc(teamName(team))}">
+      <img src="img/teams/${b.code.toLowerCase()}.svg" alt="${esc(teamName(team))}" class="pr-team-badge pr-team-badge-lg" data-code="${b.code}" onerror="prLogoFallback(this)">
+    </button>`;
+  }).join('');
+  return `<div class="pr-modal-backdrop" onclick="prCloseAvatarPicker(event)">
+    <div class="pr-card pr-modal-card" onclick="event.stopPropagation()">
+      <div class="pr-section-title">${t('chooseAvatarTitle')}</div>
+      <div class="pr-avatar-grid">
+        <button type="button" class="pr-avatar-option ${!draft?'active':''}" onclick="prPickAvatarTeam('')" title="${t('avatarNone')}">
+          <span class="pr-avatar">${esc((player.name||'?').trim().charAt(0))}</span>
+        </button>
+        ${options}
+      </div>
+      ${remainingMs > 0 ? `<div class="pr-hint" style="margin-top:10px">${t('avatarCooldownHint',{days:toAr(days)})}</div>` : ''}
+      <div style="margin-top:14px;display:flex;justify-content:flex-end;gap:8px">
+        <button class="pr-btn ghost" onclick="prCloseAvatarPicker()">${t('cancel')}</button>
+        <button class="pr-btn" id="avatar-save-btn" ${remainingMs>0?'disabled':''} onclick="prSaveAvatar()">${t('saveEdit')}</button>
+      </div>
+    </div>
+  </div>`;
+}
+window.prOpenAvatarPicker = function(){
+  state.avatarDraft = null;
+  state.avatarPickerOpen = true;
+  render();
+};
+window.prCloseAvatarPicker = function(){
+  state.avatarPickerOpen = false;
+  render();
+};
+window.prPickAvatarTeam = function(team){
+  state.avatarDraft = team;
+  render();
+};
+window.prSaveAvatar = async function(){
+  const player = state.players.find(p => p.id === state.session.playerId);
+  if(!player) return;
+  const btn = document.getElementById('avatar-save-btn');
+  const btnOriginalLabel = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = t('savingPredictions'); }
+  const draft = state.avatarDraft != null ? state.avatarDraft : (player.avatarTeam || '');
+  const result = await setPlayerAvatar(player.id, draft || null);
+  if(result.ok){
+    player.avatarTeam = draft || null;
+    player.avatarChangedAt = result.avatarChangedAt || new Date().toISOString();
+    state.avatarPickerOpen = false;
+    render();
+    prToast(t('avatarSaved'));
+    return;
+  }
+  if(result.reason === 'cooldown'){
+    prToast(t('avatarCooldownToast'), true);
+  } else {
+    prToast(t('savedErr'), true);
+  }
+  if(btn){ btn.disabled = false; btn.textContent = btnOriginalLabel; }
+};
 
 export function render(){
   if(!state.storageHealthy){
@@ -40,6 +111,8 @@ export function render(){
 
 function renderApp(){
   const badgeName = state.session.isAdmin ? t('organizer') : state.session.playerName;
+  const me = !state.session.isAdmin ? state.players.find(p => p.id === state.session.playerId) : null;
+  const badgeInner = `${me ? playerAvatarHTML(me) : `<span class="pr-avatar">${esc((badgeName||'?').trim().charAt(0))}</span>`}<b>${esc(badgeName)}</b>`;
   root.innerHTML = `
     <div class="pr-header">
       <div class="pr-title-row">
@@ -48,12 +121,13 @@ function renderApp(){
       </div>
       <div class="pr-header-right">
         ${langToggleBtn()}
-        <div class="pr-user-badge"><span class="pr-avatar">${esc((badgeName||'?').trim().charAt(0))}</span><b>${esc(badgeName)}</b> <button class="pr-logout" onclick="prLogout()">${t('logout')}</button></div>
+        <div class="pr-user-badge">${me ? `<button type="button" class="pr-user-badge-trigger" onclick="prOpenAvatarPicker()" title="${t('changeAvatarHint')}">${badgeInner}</button>` : `<span class="pr-user-badge-trigger">${badgeInner}</span>`} <button class="pr-logout" onclick="prLogout()">${t('logout')}</button></div>
       </div>
       <div class="pr-subtitle">${t('subtitle')}</div>
     </div>
     <div class="pr-tabs" id="pr-tabs"></div>
     <div id="pr-content"></div>
+    ${state.avatarPickerOpen ? renderAvatarPicker() : ''}
   `;
   const tabsEl = document.getElementById('pr-tabs');
   const tabs = state.session.isAdmin

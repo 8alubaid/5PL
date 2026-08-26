@@ -117,6 +117,28 @@ html[dir="ltr"] .pr-user-badge { padding: 6px 6px 6px 14px; }
   font-family:'Tajawal',sans-serif; flex-shrink:0;
 }
 .pr-avatar-sm { width:22px; height:22px; font-size:11px; }
+.pr-avatar-logo { background:transparent; object-fit:contain; border:1.5px solid rgba(255,255,255,0.28); }
+.pr-user-badge-trigger {
+  display:inline-flex; align-items:center; gap:9px; background:none; border:none;
+  padding:0; margin:0; color:inherit; font:inherit; cursor:pointer;
+}
+.pr-user-badge-trigger:hover .pr-avatar { box-shadow: 0 0 0 2px var(--gold-bright); }
+
+/* Avatar picker modal */
+.pr-modal-backdrop {
+  position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:1000;
+  display:flex; align-items:center; justify-content:center; padding:16px;
+  animation: prFadeUp .2s var(--ease) both;
+}
+.pr-modal-card { max-width:420px; width:100%; max-height:80vh; overflow-y:auto; }
+.pr-avatar-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(52px,1fr)); gap:10px; margin-top:12px; }
+.pr-avatar-option {
+  background: rgba(255,255,255,0.05); border:1.5px solid transparent; border-radius:14px;
+  padding:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition: all .15s var(--ease);
+}
+.pr-avatar-option:hover { background: rgba(255,255,255,0.1); }
+.pr-avatar-option.active { border-color: var(--gold-bright); background: var(--gold-soft); }
+.pr-avatar-option img, .pr-avatar-option .pr-avatar { width:36px; height:36px; }
 .pr-player-cell { display:inline-flex; align-items:center; gap:8px; vertical-align:middle; }
 
 /* Tabs */

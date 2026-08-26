@@ -33,7 +33,9 @@ export const state = {
   lastFeedRefresh: null,
   editingRoundId: null,
   roundEditDraft: {},
-  editingPlayerId: null
+  editingPlayerId: null,
+  avatarPickerOpen: false,
+  avatarDraft: null
 };
 
 export function loadLang(){ try { return localStorage.getItem('pr_lang') || 'ar'; } catch(e){ return 'ar'; } }

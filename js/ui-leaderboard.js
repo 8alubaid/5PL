@@ -2,6 +2,7 @@ import { state } from './state.js';
 import { t, toAr, roundDisplayName } from './i18n.js';
 import { esc } from './utils.js';
 import { computeStandings } from './scoring.js';
+import { playerAvatarHTML } from './data.js';
 
 export function renderLeaderboardTab(){
   if(!state.players.length) return `<div class="pr-card"><div class="pr-empty">${t('noPlayersYet')}</div></div>`;
@@ -10,7 +11,7 @@ export function renderLeaderboardTab(){
   const rows = standings.map((s,i) => `
     <tr class="${s.player.id===state.session.playerId?'pr-row-me':''}">
       <td class="pr-rank">${medals[i] || toAr(i+1)}</td>
-      <td><span class="pr-player-cell"><span class="pr-avatar pr-avatar-sm">${esc((s.player.name||'?').trim().charAt(0))}</span><span>${esc(s.player.name)}</span></span></td>
+      <td><span class="pr-player-cell">${playerAvatarHTML(s.player, 'pr-avatar-sm')}<span>${esc(s.player.name)}</span></span></td>
       <td class="pr-total">${toAr(s.total)}</td>
       <td>${toAr(s.exactBonusTotal)}</td>
       <td>${roundDisplayName(s.bestRound)} (${toAr(s.bestVal)})</td>

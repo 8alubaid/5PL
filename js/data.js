@@ -123,3 +123,21 @@ export function drawBadgeHTML(extraClass){
 export function teamPairHTML(ar){
   return `<span class="pr-team-pair">${teamBadgeHTML(ar)}<span>${esc(teamName(ar))}</span></span>`;
 }
+// A player's picked club renders in the same avatar slot they'd otherwise show
+// their initial in (header badge, standings row) — falls back to the initial
+// if they haven't picked one, or if their chosen club's logo file goes missing.
+export function playerAvatarHTML(player, extraClass){
+  const initial = esc((player && player.name || '?').trim().charAt(0));
+  const cls = `pr-avatar ${extraClass||''}`;
+  const b = player && player.avatarTeam ? TEAM_BADGE[player.avatarTeam] : null;
+  if(b){
+    return `<img src="img/teams/${b.code.toLowerCase()}.svg" alt="${esc(teamName(player.avatarTeam))}" class="${cls} pr-avatar-logo" data-initial="${initial}" onerror="prAvatarFallback(this)">`;
+  }
+  return `<span class="${cls}">${initial}</span>`;
+}
+window.prAvatarFallback = function(img){
+  const span = document.createElement('span');
+  span.className = img.className.replace('pr-avatar-logo', '').trim();
+  span.textContent = img.dataset.initial;
+  img.replaceWith(span);
+};
