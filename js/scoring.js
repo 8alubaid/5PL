@@ -59,6 +59,21 @@ export function isMatchPredictable(m){
   return !isMatchStarted(m);
 }
 
+// Shared by the initial render (so a countdown badge never has to flash
+// 00:00:00:00 before its first real tick) and main.js's once-a-second interval
+// that keeps it updating afterward.
+export function countdownParts(kickoffIso){
+  const remainingMs = new Date(kickoffIso).getTime() - Date.now();
+  const totalSec = Math.max(0, Math.floor(remainingMs / 1000));
+  return {
+    remainingMs,
+    days: Math.floor(totalSec / 86400),
+    hours: Math.floor((totalSec % 86400) / 3600),
+    minutes: Math.floor((totalSec % 3600) / 60),
+    seconds: totalSec % 60
+  };
+}
+
 export function fmtDT(iso){
   if(!iso) return '—';
   const d = new Date(iso);

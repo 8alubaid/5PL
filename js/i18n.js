@@ -137,7 +137,12 @@ export const I18N = {
   avatarNone: { ar:'بدون (الحرف الأول)', en:'None (initial)' },
   avatarCooldownHint: { ar:'تقدر تغيّره بعد {days} يوم.', en:'You can change it again in {days} days.' },
   avatarCooldownToast: { ar:'لسا وقت التغيير ما حان — جرّب بعدين.', en:"It's not time to change it again yet — try later." },
-  avatarSaved: { ar:'تم تحديث شعارك ✅', en:'Your avatar was updated ✅' }
+  avatarSaved: { ar:'تم تحديث شعارك ✅', en:'Your avatar was updated ✅' },
+  countdownLabel: { ar:'⏳ يقفل التوقع خلال', en:'⏳ Closes in' },
+  countdownDays: { ar:'يوم', en:'Days' },
+  countdownHours: { ar:'ساعة', en:'Hrs' },
+  countdownMinutes: { ar:'دقيقة', en:'Min' },
+  countdownSeconds: { ar:'ثانية', en:'Sec' }
 };
 
 export function t(key, vars){

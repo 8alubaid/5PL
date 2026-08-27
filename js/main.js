@@ -143,7 +143,7 @@ function renderApp(){
 
 // findOpenRoundId is used when switching to the predict tab so the first open round
 // is pre-selected — imported lazily here to avoid a circular top-level dependency.
-import { findOpenRoundId } from './scoring.js';
+import { findOpenRoundId, countdownParts } from './scoring.js';
 
 window.prSetTab = function(tab){ state.activeTab = tab; if(tab !== 'admin') state.selectedRoundId = state.selectedRoundId || findOpenRoundId(); render(); };
 window.prLogout = function(){ state.session = { playerId:null, playerName:null, isAdmin:false }; state.loginMode = 'player'; clearSession(); render(); };
@@ -196,3 +196,24 @@ setInterval(async () => {
   }
   if(state.config && (state.session.playerId || state.session.isAdmin)) render();
 }, 30000);
+
+// Ticks every countdown badge currently on screen by writing straight into
+// its digits — deliberately bypassing render() so this can run once a second
+// without fighting an in-progress exact-score keystroke or losing scroll
+// position. If a badge's deadline has actually passed, a single real render()
+// runs afterward so that match flips over to its revealed state right on
+// time instead of waiting for the next 30s tick.
+setInterval(() => {
+  const badges = document.querySelectorAll('.pr-countdown[data-deadline]');
+  if(!badges.length) return;
+  let anyExpired = false;
+  const pad = n => String(n).padStart(2,'0');
+  badges.forEach(badge => {
+    const p = countdownParts(badge.dataset.deadline);
+    if(p.remainingMs <= 0){ anyExpired = true; return; }
+    badge.classList.toggle('urgent', p.remainingMs < 60 * 60 * 1000);
+    const set = (unit, val) => { const el = badge.querySelector(`[data-unit="${unit}"]`); if(el) el.textContent = pad(val); };
+    set('d', p.days); set('h', p.hours); set('m', p.minutes); set('s', p.seconds);
+  });
+  if(anyExpired) render();
+}, 1000);

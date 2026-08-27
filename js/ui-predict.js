@@ -3,7 +3,7 @@ import { t } from './i18n.js';
 import { esc, prToast } from './utils.js';
 import { toAr, toWest, roundDisplayName } from './i18n.js';
 import { teamName, teamPairHTML, teamBadgeHTML, drawBadgeHTML, stadiumName } from './data.js';
-import { calcRoundScore, matchOutcome, findOpenRoundId, fmtDT, isMatchPredictable, isMatchStarted } from './scoring.js';
+import { calcRoundScore, matchOutcome, findOpenRoundId, fmtDT, isMatchPredictable, isMatchStarted, countdownParts } from './scoring.js';
 import { savePrediction } from './api.js';
 import { render } from './main.js';
 
@@ -87,6 +87,32 @@ function renderPendingRow(m){
   </div>`;
 }
 
+// Renders a live-ticking D/H/M/S badge counting down to kickoff. The numbers
+// are plain Western digits on purpose (never run through toAr) even in
+// Arabic mode — a ticking countdown reads better with fixed-width digits than
+// with Arabic-Indic ones. Its own setInterval in main.js keeps it updating by
+// writing straight into these elements' text, without touching render() —
+// re-rendering every second here would fight with someone mid-typing an
+// exact score. data-deadline is what that interval reads to do the math.
+function renderCountdown(m){
+  if(!m.kickoff) return '';
+  // Computed up front so the badge shows the correct numbers from the instant
+  // it appears — main.js's ticking interval only has to take over from here,
+  // never fill in a placeholder first.
+  const p = countdownParts(m.kickoff);
+  const pad = n => String(n).padStart(2,'0');
+  const seg = (unit, val, label) => `<div class="pr-countdown-seg"><span class="pr-countdown-num" data-unit="${unit}">${pad(val)}</span><span class="pr-countdown-unit-label">${label}</span></div>`;
+  return `<div class="pr-countdown ${p.remainingMs < 60*60*1000 ? 'urgent' : ''}" id="pr-countdown-${m.id}" data-deadline="${m.kickoff}">
+    <span class="pr-countdown-title">${t('countdownLabel')}</span>
+    <div class="pr-countdown-units">
+      ${seg('d', p.days, t('countdownDays'))}<span class="pr-countdown-sep">:</span>
+      ${seg('h', p.hours, t('countdownHours'))}<span class="pr-countdown-sep">:</span>
+      ${seg('m', p.minutes, t('countdownMinutes'))}<span class="pr-countdown-sep">:</span>
+      ${seg('s', p.seconds, t('countdownSeconds'))}
+    </div>
+  </div>`;
+}
+
 function renderSummaryRow(m){
   const d = state.predictDraft[m.id] || {};
   let txt = d.outcome ? outcomeLabel(d.outcome, m) : t('noPrediction');
@@ -100,6 +126,7 @@ function renderSummaryRow(m){
     </div>
     ${m.stadium ? `<div class="pr-hint" style="margin:-2px 0 6px">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}
     <div class="pr-hint">✅ ${t('yourPredictionPrefix')}<b style="color:var(--text)">${txt}</b></div>
+    ${renderCountdown(m)}
   </div>`;
 }
 
@@ -113,7 +140,8 @@ function renderPredictRow(m, exactLocked){
       <span class="pr-match-time">${fmtDT(m.kickoff)}</span>
     </div>
     ${m.stadium ? `<div class="pr-hint" style="margin:-4px 0 8px">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}
-    <div class="pr-outcome-row">
+    ${renderCountdown(m)}
+    <div class="pr-outcome-row" style="margin-top:10px">
       ${btn('home', teamBadgeHTML(m.home,'pr-team-badge-lg'), esc(teamName(m.home)))}
       ${btn('draw', drawBadgeHTML('pr-team-badge-lg'), t('draw'))}
       ${btn('away', teamBadgeHTML(m.away,'pr-team-badge-lg'), esc(teamName(m.away)))}

@@ -257,6 +257,24 @@ img.pr-team-badge {
   border-radius: 10px; padding: 6px 16px; min-width:60px; text-align:center;
 }
 .pr-match-time { font-size:11px; color: var(--text-dim); }
+
+/* Prediction deadline countdown */
+.pr-countdown {
+  display:flex; align-items:center; gap:10px; margin-top:10px; padding:9px 12px;
+  background: rgba(0,0,0,0.22); border:1px solid var(--card-border); border-radius:12px; flex-wrap:wrap;
+}
+.pr-countdown-title { font-size:11px; color: var(--text-dim); white-space:nowrap; }
+.pr-countdown-units { display:flex; align-items:flex-start; gap:3px; }
+.pr-countdown-seg { display:flex; flex-direction:column; align-items:center; }
+.pr-countdown-num {
+  display:inline-block; font-family:'Cairo', sans-serif; font-weight:800; font-size:14.5px; color: var(--gold-bright);
+  font-variant-numeric: tabular-nums; background: var(--bg-deep); border:1px solid var(--card-border);
+  border-radius:7px; padding:3px 5px; min-width:24px; text-align:center; line-height:1.1;
+  transition: color .2s, border-color .2s;
+}
+.pr-countdown-unit-label { font-size:8.5px; color: var(--text-dim); margin-top:3px; letter-spacing:0.3px; }
+.pr-countdown-sep { color: var(--text-dim); font-weight:700; align-self:center; margin-top:-6px; }
+.pr-countdown.urgent .pr-countdown-num { color: #ff9d90; border-color: rgba(224,87,74,0.45); }
 .pr-pts-pill {
   font-size:11px; font-weight:400; padding:2px 8px; border-radius:999px; margin-top:4px; display:inline-block;
 }
