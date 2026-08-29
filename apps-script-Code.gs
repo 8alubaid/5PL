@@ -152,6 +152,34 @@ function setPlayerAvatar_(playerId, avatarTeam) {
   }
 }
 
+function saveHankaGuess_(playerId, guess) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet = getSheet_();
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === 'hanka') {
+        var hanka = {};
+        try { hanka = JSON.parse(data[i][1]) || {}; } catch (err) { hanka = {}; }
+        if (!hanka.guesses) hanka.guesses = {};
+        // Locking happens here, not just in the UI — a request replayed after the
+        // organizer locks shouldn't be able to sneak a change in underneath it.
+        if (hanka.locked) return { ok: false, reason: 'locked' };
+        hanka.guesses[playerId] = guess;
+        sheet.getRange(i + 1, 2).setValue(JSON.stringify(hanka));
+        return { ok: true };
+      }
+    }
+    var fresh = { locked: false, guesses: {}, answers: null };
+    fresh.guesses[playerId] = guess;
+    sheet.appendRow(['hanka', JSON.stringify(fresh)]);
+    return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function savePrediction_(playerId, matchPredictions) {
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
@@ -186,6 +214,12 @@ function doPost(e) {
   if (body.action === 'savePrediction') {
     var saveResult = savePrediction_(body.playerId, body.matchPredictions);
     return ContentService.createTextOutput(JSON.stringify(saveResult))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (body.action === 'saveHankaGuess') {
+    var hankaResult = saveHankaGuess_(body.playerId, body.guess);
+    return ContentService.createTextOutput(JSON.stringify(hankaResult))
       .setMimeType(ContentService.MimeType.JSON);
   }
 

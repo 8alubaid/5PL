@@ -25,6 +25,38 @@ export function calcRoundScore(playerId, rnd){
   return { total: tierPoints + exactBonus, correctCount, tierPoints, exactBonus, anyFinished };
 }
 
+// الحنكة is a season-long side prediction (champion, top 3, relegated, top
+// scorer/assist/contributor) — a separate scoreboard from the per-round match
+// predictions above, only scored once the organizer enters the real results.
+// Free-typed player names (scorer/assist/contributor) are matched after
+// normalizing spacing and common Arabic letter variants (أ/إ/آ→ا, ة→ه) rather
+// than requiring an exact byte-for-byte match, since players won't all type a
+// name identically.
+function normName(s){
+  return (s || '').trim().replace(/\s+/g, ' ').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').toLowerCase();
+}
+export function computeHankaScore(guess, answers){
+  const empty = { champion:0, top3:0, relegated:0, scorer:0, assist:0, contributor:0, total:0 };
+  if(!guess || !answers) return empty;
+  const championPts = guess.champion && answers.champion && guess.champion === answers.champion ? 5 : 0;
+  const top3Pts = (guess.top3 || []).filter(team => (answers.top3 || []).includes(team)).length;
+  const relegatedPts = (guess.relegated || []).filter(team => (answers.relegated || []).includes(team)).length;
+  const scorerPts = guess.scorer && answers.scorer && normName(guess.scorer) === normName(answers.scorer) ? 5 : 0;
+  const assistPts = guess.assist && answers.assist && normName(guess.assist) === normName(answers.assist) ? 5 : 0;
+  const contributorPts = guess.contributor && answers.contributor && normName(guess.contributor) === normName(answers.contributor) ? 5 : 0;
+  return {
+    champion: championPts, top3: top3Pts, relegated: relegatedPts,
+    scorer: scorerPts, assist: assistPts, contributor: contributorPts,
+    total: championPts + top3Pts + relegatedPts + scorerPts + assistPts + contributorPts
+  };
+}
+export function computeHankaStandings(){
+  return state.players.map(pl => {
+    const guess = state.hanka.guesses[pl.id] || null;
+    return { player: pl, guess, score: computeHankaScore(guess, state.hanka.answers) };
+  }).sort((a,b) => b.score.total - a.score.total);
+}
+
 export function computeStandings(){
   return state.players.map(pl => {
     let total = 0, exactBonusTotal = 0, roundTotals = {};

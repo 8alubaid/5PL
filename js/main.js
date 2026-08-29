@@ -8,6 +8,7 @@ import { renderLogin } from './ui-login.js';
 import { renderPredictTab } from './ui-predict.js';
 import { renderLeaderboardTab } from './ui-leaderboard.js';
 import { renderHistoryTab } from './ui-history.js';
+import { renderHankaTab } from './ui-hanka.js';
 import { renderAdminTab } from './ui-admin.js';
 import './export-excel.js';
 import { SATEAMS, TEAM_BADGE, teamName, playerAvatarHTML } from './data.js';
@@ -132,10 +133,11 @@ function renderApp(){
   const tabsEl = document.getElementById('pr-tabs');
   const tabs = state.session.isAdmin
     ? [['admin', t('tabControlPanel')],['leaderboard', t('tabStandings')],['history', t('tabHistory')]]
-    : [['predict', t('tabPredict')],['leaderboard', t('tabStandings')],['history', t('tabPrevious')]];
+    : [['predict', t('tabPredict')],['hanka', t('tabHanka')],['leaderboard', t('tabStandings')],['history', t('tabPrevious')]];
   tabsEl.innerHTML = tabs.map(([k,l]) => `<button class="pr-tab ${state.activeTab===k?'active':''}" onclick="prSetTab('${k}')">${l}</button>`).join('');
   const content = document.getElementById('pr-content');
   if(state.activeTab === 'predict') content.innerHTML = renderPredictTab();
+  else if(state.activeTab === 'hanka') content.innerHTML = renderHankaTab();
   else if(state.activeTab === 'leaderboard') content.innerHTML = renderLeaderboardTab();
   else if(state.activeTab === 'history') content.innerHTML = renderHistoryTab();
   else if(state.activeTab === 'admin') renderAdminTab(content);

@@ -24,7 +24,8 @@ export async function sGetAll(){
       config: all.config ? JSON.parse(all.config) : null,
       players: all.players ? JSON.parse(all.players) : null,
       rounds: all.rounds ? JSON.parse(all.rounds) : null,
-      predictions: all.predictions ? JSON.parse(all.predictions) : null
+      predictions: all.predictions ? JSON.parse(all.predictions) : null,
+      hanka: all.hanka ? JSON.parse(all.hanka) : null
     };
   } catch(e){
     state.lastStorageError = (e && e.message === 'TIMEOUT') ? 'انتهى وقت الانتظار (الاتصال بطيء جدًا أو ما استجاب)' : ((e && e.message) ? e.message : String(e));
@@ -100,6 +101,21 @@ export async function setPlayerAvatar(playerId, avatarTeam){
   }
 }
 
+export async function saveHankaGuess(playerId, guess){
+  try {
+    const res = await fetchWithTimeout(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveHankaGuess', playerId, guess })
+    });
+    const data = await res.json();
+    return data || { ok: false };
+  } catch(e){
+    state.lastStorageError = (e && e.message === 'TIMEOUT') ? 'انتهى وقت الانتظار (الاتصال بطيء جدًا أو ما استجاب)' : ((e && e.message) ? e.message : String(e));
+    return { ok: false };
+  }
+}
+
 export async function changeAdminPin(currentPin, newPin){
   try {
     const res = await fetchWithTimeout(API_URL, {
@@ -123,6 +139,7 @@ export async function loadAll(){
     state.config = all.config || { title: FIXED_TITLE, adminPin: FIXED_ADMIN_PIN, pointsExact: 3, pointsWinner: 1 };
     if(!all.config) await sSet('config', state.config);
     state.players = all.players || []; state.rounds = all.rounds || []; state.predictions = all.predictions || {};
+    state.hanka = all.hanka || { locked: false, guesses: {}, answers: null };
     state.loadError = false;
   }catch(e){ state.loadError = true; }
 }

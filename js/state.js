@@ -16,6 +16,7 @@ export const state = {
   players: [],
   rounds: [],
   predictions: {},
+  hanka: { locked: false, guesses: {}, answers: null },
   session: { playerId: null, playerName: null, isAdmin: false },
   activeTab: 'predict',
   selectedRoundId: null,
@@ -35,7 +36,9 @@ export const state = {
   roundEditDraft: {},
   editingPlayerId: null,
   avatarPickerOpen: false,
-  avatarDraft: null
+  avatarDraft: null,
+  hankaViewMode: 'edit',
+  hankaDraft: null
 };
 
 export function loadLang(){ try { return localStorage.getItem('pr_lang') || 'ar'; } catch(e){ return 'ar'; } }
