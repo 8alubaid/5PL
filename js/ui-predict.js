@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { t } from './i18n.js';
 import { esc, prToast } from './utils.js';
 import { toAr, toWest, roundDisplayName } from './i18n.js';
-import { teamName, teamPairHTML, teamBadgeHTML, drawBadgeHTML, stadiumName } from './data.js';
+import { teamName, teamPairHTML, teamBadgeHTML, drawBadgeHTML, stadiumName, playerAvatarHTML } from './data.js';
 import { calcRoundScore, matchOutcome, findOpenRoundId, fmtDT, isMatchPredictable, isMatchStarted, countdownParts } from './scoring.js';
 import { savePrediction } from './api.js';
 import { render } from './main.js';
@@ -161,6 +161,30 @@ function renderPredictRow(m, exactLocked){
   </div>`;
 }
 
+// Shown once every match in a round has a final result — a simple "who did
+// best this round" table, separate from the season-long standings tab.
+function renderRoundLeaderboard(rnd){
+  const rows = state.players
+    .map(pl => ({ player: pl, score: calcRoundScore(pl.id, rnd) }))
+    .sort((a,b) => b.score.total - a.score.total || b.score.correctCount - a.score.correctCount);
+  const medals = ['🥇','🥈','🥉'];
+  const tableRows = rows.map((r,i) => `
+    <tr class="${r.player.id===state.session.playerId?'pr-row-me':''}">
+      <td class="pr-rank">${medals[i] || toAr(i+1)}</td>
+      <td><span class="pr-player-cell">${playerAvatarHTML(r.player,'pr-avatar-sm')}<span>${esc(r.player.name)}</span></span></td>
+      <td class="pr-total">${toAr(r.score.total)}</td>
+      <td>${toAr(r.score.correctCount)}/${toAr(rnd.matches.length)}</td>
+      <td>${r.score.exactBonus ? '🎯 +'+toAr(r.score.exactBonus) : '—'}</td>
+    </tr>`).join('');
+  return `<div class="pr-card" style="margin-top:16px">
+    <div class="pr-section-title">${t('roundLeaderboardTitle',{round:roundDisplayName(rnd.name)})}</div>
+    <div style="overflow-x:auto"><table class="pr-table">
+      <thead><tr><th></th><th>${t('colPlayer')}</th><th>${t('colTotal')}</th><th>${t('colCorrect')}</th><th>${t('colExactBonus')}</th></tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table></div>
+  </div>`;
+}
+
 export function renderPredictTab(){
   if(!state.rounds.length) return `<div class="pr-card"><div class="pr-empty">${t('noRoundsYet')}</div></div>`;
   if(!state.selectedRoundId) state.selectedRoundId = findOpenRoundId();
@@ -182,6 +206,7 @@ export function renderPredictTab(){
 
   const anyPredictable = rnd.matches.some(m => isMatchPredictable(m));
   const anyRevealed = rnd.matches.some(m => m.finished || isMatchStarted(m));
+  const roundFinished = rnd.matches.every(m => m.finished);
 
   let scoreHint = '';
   if(anyRevealed){
@@ -207,7 +232,8 @@ export function renderPredictTab(){
         <button class="pr-btn" id="predict-save-btn" onclick="prSavePredictions('${rnd.id}')">${t('savePredictions')}</button>
       </div>
       <div id="predict-msg" class="pr-hint"></div>` : ''}
-    </div>`;
+    </div>
+    ${roundFinished ? renderRoundLeaderboard(rnd) : ''}`;
 }
 
 window.prSelectRound = function(id){ state.selectedRoundId = id; state.predictDraftRoundId = null; render(); };

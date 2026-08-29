@@ -183,7 +183,9 @@ export const I18N = {
   hankaYourPoints: { ar:'نقاطك بحنكة', en:'Your Al-Hanka points' },
   hankaStandingsTitle: { ar:'🏅 ترتيب حنكة', en:'🏅 Al-Hanka Standings' },
   hankaNoGuessYet: { ar:'ما توقع', en:"Didn't predict" },
-  hankaClearAnswerOption: { ar:'-- بدون --', en:'-- None --' }
+  hankaClearAnswerOption: { ar:'-- بدون --', en:'-- None --' },
+  roundLeaderboardTitle: { ar:'🏅 ترتيب {round}', en:'🏅 {round} Standings' },
+  colCorrect: { ar:'الصحيحة', en:'Correct' }
 };
 
 export function t(key, vars){
