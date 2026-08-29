@@ -25,7 +25,7 @@ export function calcRoundScore(playerId, rnd){
   return { total: tierPoints + exactBonus, correctCount, tierPoints, exactBonus, anyFinished };
 }
 
-// الحنكة is a season-long side prediction (champion, top 3, relegated, top
+// حنكة is a season-long side prediction (champion, top 3, relegated, top
 // scorer/assist/contributor) — a separate scoreboard from the per-round match
 // predictions above, only scored once the organizer enters the real results.
 // Free-typed player names (scorer/assist/contributor) are matched after
