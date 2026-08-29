@@ -109,5 +109,8 @@ export function countdownParts(kickoffIso){
 export function fmtDT(iso){
   if(!iso) return '—';
   const d = new Date(iso);
-  return toAr(d.toLocaleString(state.lang === 'en' ? 'en-US' : 'ar-SA', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }));
+  // The ar-SA locale defaults to the Hijri calendar on a lot of phones (iOS
+  // Safari especially) unless told otherwise — match dates need to read as
+  // the real Gregorian date regardless of the visitor's device settings.
+  return toAr(d.toLocaleString(state.lang === 'en' ? 'en-US' : 'ar-SA', { calendar: 'gregory', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }));
 }

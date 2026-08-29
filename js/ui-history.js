@@ -13,7 +13,7 @@ function outcomeLabel(side, m){
 
 function fmtTime(ts){
   const d = new Date(ts);
-  return toAr(d.toLocaleTimeString(state.lang === 'en' ? 'en-US' : 'ar-SA', { hour:'2-digit', minute:'2-digit' }));
+  return toAr(d.toLocaleTimeString(state.lang === 'en' ? 'en-US' : 'ar-SA', { calendar: 'gregory', hour:'2-digit', minute:'2-digit' }));
 }
 
 function renderAdminLiveFeed(){
