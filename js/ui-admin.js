@@ -4,6 +4,7 @@ import { makeEmptyDraftMatches } from './utils.js';
 import { renderAdminRounds } from './ui-admin-rounds.js';
 import { renderAdminPlayers } from './ui-admin-players.js';
 import { renderAdminSettings } from './ui-admin-settings.js';
+import { renderAdminHanka } from './ui-admin-hanka.js';
 import { render } from './main.js';
 
 export function renderAdminTab(content){
@@ -18,12 +19,14 @@ export function renderAdminTab(content){
     <div class="pr-tabs" style="margin-bottom:16px">
       <button class="pr-tab ${state.adminSubTab==='rounds'?'active':''}" onclick="prAdminSub('rounds')">${t('adminTabRounds')}</button>
       <button class="pr-tab ${state.adminSubTab==='players'?'active':''}" onclick="prAdminSub('players')">${t('adminTabPlayers')}</button>
+      <button class="pr-tab ${state.adminSubTab==='hanka'?'active':''}" onclick="prAdminSub('hanka')">${t('adminTabHanka')}</button>
       <button class="pr-tab ${state.adminSubTab==='settings'?'active':''}" onclick="prAdminSub('settings')">${t('adminTabSettings')}</button>
     </div>
     <div id="admin-body"></div>`;
   const body = document.getElementById('admin-body');
   if(state.adminSubTab === 'rounds') body.innerHTML = renderAdminRounds();
   else if(state.adminSubTab === 'players') body.innerHTML = renderAdminPlayers();
+  else if(state.adminSubTab === 'hanka') body.innerHTML = renderAdminHanka();
   else body.innerHTML = renderAdminSettings();
 }
 

@@ -67,6 +67,7 @@ export const I18N = {
   adminTabRounds: { ar:'الجولات والنتائج', en:'Rounds & Results' },
   adminTabPlayers: { ar:'اللاعبون', en:'Players' },
   adminTabSettings: { ar:'الإعدادات', en:'Settings' },
+  adminTabHanka: { ar:'حنكة', en:'Al-Hanka' },
   addNewRound: { ar:'إضافة جولة جديدة ➕', en:'Add New Round ➕' },
   pasteHint: { ar:'انسخ جدول الجولة من أي مصدر رسمي تثق فيه (موقع دوري روشن، حساب الاتحاد، جوجل...) والصقه هنا، وراح يحوّله تلقائيًا لمباريات — أسماء الفرق لازم تكون بالعربي عشان يتعرف عليها:', en:'Copy the round schedule from any official source you trust (Roshn League site, federation account, Google...) and paste it here — it\'ll turn it into matches automatically. Team names must stay in Arabic for it to recognize them:' },
   convertText: { ar:'حوّل النص لمباريات 🪄', en:'Convert Text to Matches 🪄' },
