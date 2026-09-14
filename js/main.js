@@ -11,7 +11,7 @@ import { renderHistoryTab } from './ui-history.js';
 import { renderHankaTab } from './ui-hanka.js';
 import { renderAdminTab } from './ui-admin.js';
 import './export-excel.js';
-import { SATEAMS, TEAM_BADGE, teamName, playerAvatarHTML } from './data.js';
+import { SATEAMS, TEAM_BADGE, teamName, playerAvatarHTML, iconHTML } from './data.js';
 
 const AVATAR_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 function avatarCooldownRemainingMs(player){
@@ -32,7 +32,7 @@ function renderAvatarPicker(){
   }).join('');
   return `<div class="pr-modal-backdrop" onclick="prCloseAvatarPicker(event)">
     <div class="pr-card pr-modal-card" onclick="event.stopPropagation()">
-      <div class="pr-section-title">${t('chooseAvatarTitle')}</div>
+      <div class="pr-section-title">${iconHTML('palette')} ${t('chooseAvatarTitle')}</div>
       <div class="pr-avatar-grid">
         <button type="button" class="pr-avatar-option ${!draft?'active':''}" onclick="prPickAvatarTeam('')" title="${t('avatarNone')}">
           <span class="pr-avatar">${esc((player.name||'?').trim().charAt(0))}</span>

@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import { t, toAr } from './i18n.js';
 import { esc, prToast } from './utils.js';
-import { SATEAMS, teamName, teamSelectOptions } from './data.js';
+import { SATEAMS, teamName, teamSelectOptions, iconHTML } from './data.js';
 import { sSet } from './api.js';
 import { render } from './main.js';
 
@@ -18,33 +18,33 @@ export function renderAdminHanka(){
   const guessedCount = Object.keys(state.hanka.guesses).length;
   const answers = state.hanka.answers || { champion:null, top3:[], relegated:[], scorer:'', assist:'', contributor:'' };
   return `<div class="pr-card">
-    <div class="pr-flex-between"><div class="pr-section-title">${t('hankaAdminTitle')}</div>
+    <div class="pr-flex-between"><div class="pr-section-title">${iconHTML('brain')} ${t('hankaAdminTitle')}</div>
       <span class="pr-hint">${t('hankaGuessedCount',{n:toAr(guessedCount),total:toAr(activeCount)})}</span>
     </div>
-    <div class="pr-hint" style="margin-bottom:10px">${state.hanka.locked ? t('hankaLockedStatus') : t('hankaUnlockedStatus')}</div>
-    <button class="pr-btn ${state.hanka.locked?'ghost':''}" onclick="prToggleHankaLock()">${state.hanka.locked ? t('hankaUnlockBtn') : t('hankaLockBtn')}</button>
+    <div class="pr-hint" style="margin-bottom:10px">${iconHTML(state.hanka.locked?'lock':'lock-open')} ${state.hanka.locked ? t('hankaLockedStatus') : t('hankaUnlockedStatus')}</div>
+    <button class="pr-btn ${state.hanka.locked?'ghost':''}" onclick="prToggleHankaLock()">${iconHTML(state.hanka.locked?'lock-open':'lock')} ${state.hanka.locked ? t('hankaUnlockBtn') : t('hankaLockBtn')}</button>
   </div>
   <div class="pr-card">
-    <div class="pr-section-title">${t('hankaAnswersTitle')}</div>
+    <div class="pr-section-title">${iconHTML('flag-checkered')} ${t('hankaAnswersTitle')}</div>
     <div class="pr-hint" style="margin-bottom:14px">${t('hankaAnswersHint')}</div>
 
-    <label class="pr-label">${t('hankaChampionLabel')}</label>
+    <label class="pr-label">${iconHTML('trophy')} ${t('hankaChampionLabel')}</label>
     <select class="pr-input" id="ha-champion" style="margin-bottom:14px">${teamSelectOptions(answers.champion)}</select>
 
-    <label class="pr-label">${t('hankaTop3Label')}</label>
+    <label class="pr-label">${iconHTML('ranking')} ${t('hankaTop3Label')}</label>
     <div style="margin-bottom:14px">${teamCheckboxes('ha-top3-cb', answers.top3 || [])}</div>
 
-    <label class="pr-label">${t('hankaRelegatedLabel')}</label>
+    <label class="pr-label">${iconHTML('trend-down')} ${t('hankaRelegatedLabel')}</label>
     <div style="margin-bottom:14px">${teamCheckboxes('ha-relegated-cb', answers.relegated || [])}</div>
 
-    <label class="pr-label">${t('hankaScorerLabel')}</label>
+    <label class="pr-label">${iconHTML('soccer-ball')} ${t('hankaScorerLabel')}</label>
     <input class="pr-input" id="ha-scorer" value="${esc(answers.scorer||'')}" placeholder="${t('hankaNamePlaceholder')}" style="margin-bottom:14px">
-    <label class="pr-label">${t('hankaAssistLabel')}</label>
+    <label class="pr-label">${iconHTML('target')} ${t('hankaAssistLabel')}</label>
     <input class="pr-input" id="ha-assist" value="${esc(answers.assist||'')}" placeholder="${t('hankaNamePlaceholder')}" style="margin-bottom:14px">
-    <label class="pr-label">${t('hankaContributorLabel')}</label>
+    <label class="pr-label">${iconHTML('star')} ${t('hankaContributorLabel')}</label>
     <input class="pr-input" id="ha-contributor" value="${esc(answers.contributor||'')}" placeholder="${t('hankaNamePlaceholder')}" style="margin-bottom:14px">
 
-    <button class="pr-btn" id="ha-save-btn" onclick="prSaveHankaAnswers()">${t('hankaSaveAnswersBtn')}</button>
+    <button class="pr-btn" id="ha-save-btn" onclick="prSaveHankaAnswers()">${iconHTML('flag-checkered')} ${t('hankaSaveAnswersBtn')}</button>
   </div>`;
 }
 

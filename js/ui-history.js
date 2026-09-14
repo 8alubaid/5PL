@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { t, toAr, roundDisplayName } from './i18n.js';
-import { teamPairHTML, stadiumName, teamName } from './data.js';
+import { teamPairHTML, stadiumName, teamName, iconHTML } from './data.js';
 import { esc } from './utils.js';
 import { calcRoundScore, matchOutcome, isMatchPredictable } from './scoring.js';
 import { loadAll } from './api.js';
@@ -24,7 +24,7 @@ function renderAdminLiveFeed(){
 
   const refreshRow = `<div class="pr-flex-between" style="margin-bottom:6px;flex-wrap:wrap;gap:8px">
     <div class="pr-section-title">${t('liveFeedTitle')} — ${roundDisplayName(rnd.name)}</div>
-    <button class="pr-btn ghost small" onclick="prRefreshLiveFeed()">🔄 ${t('refreshNow')}</button>
+    <button class="pr-btn ghost small" onclick="prRefreshLiveFeed()">${iconHTML('refresh')} ${t('refreshNow')}</button>
   </div>
   <div class="pr-hint" style="margin-bottom:10px">${state.lastFeedRefresh ? t('lastUpdated',{time: fmtTime(state.lastFeedRefresh)}) : ''}</div>`;
 
@@ -43,10 +43,10 @@ function renderAdminLiveFeed(){
 
   const rows = statuses.map(s => {
     const badge = s.status === 'full'
-      ? `<span class="pr-tag closed" style="background:rgba(53,199,120,0.22);color:var(--green-bright)">✅ ${t('feedPredicted')}</span>`
+      ? `<span class="pr-tag closed" style="background:rgba(53,199,120,0.22);color:var(--green-bright)">${iconHTML('check-circle')} ${t('feedPredicted')}</span>`
       : s.status === 'partial'
-      ? `<span class="pr-tag open" style="background:rgba(217,164,65,0.22);color:var(--gold-bright)">⏳ ${t('feedPartial',{n:toAr(s.count),total:toAr(openMatches.length)})}</span>`
-      : `<span class="pr-tag open" style="background:rgba(224,87,74,0.18);color:#ff9d90">❌ ${t('feedNotPredicted')}</span>`;
+      ? `<span class="pr-tag open" style="background:rgba(217,164,65,0.22);color:var(--gold-bright)">${iconHTML('hourglass')} ${t('feedPartial',{n:toAr(s.count),total:toAr(openMatches.length)})}</span>`
+      : `<span class="pr-tag open" style="background:rgba(224,87,74,0.18);color:#ff9d90">${iconHTML('x-circle')} ${t('feedNotPredicted')}</span>`;
     return `<div class="pr-match" style="flex-wrap:wrap">
       <div style="flex:1;min-width:150px"><b>${esc(s.player.name)}</b></div>
       ${badge}
@@ -80,12 +80,12 @@ export function renderHistoryTab(){
       const realTxt = m.finished ? `${toAr(m.homeScore)} - ${toAr(m.awayScore)}` : t('notFinished');
       const predTxt = pred && pred.outcome ? outcomeLabel(pred.outcome, m) : t('noPrediction');
       const correct = m.finished && pred && pred.outcome === real;
-      const exactTxt = pred && pred.exact ? ` 🎯 ${toAr(pred.exact.home)}-${toAr(pred.exact.away)}` : '';
+      const exactTxt = pred && pred.exact ? ` ${iconHTML('target')} ${toAr(pred.exact.home)}-${toAr(pred.exact.away)}` : '';
       const exactHit = m.finished && pred && pred.exact && Number(pred.exact.home) === m.homeScore && Number(pred.exact.away) === m.awayScore;
-      const pill = !m.finished ? '' : correct ? `<span class="pr-pts-pill pr-pts-3">✅</span>` : `<span class="pr-pts-pill pr-pts-0">❌</span>`;
-      const exactPill = exactHit ? `<span class="pr-pts-pill pr-pts-1">🎯 +١</span>` : '';
+      const pill = !m.finished ? '' : correct ? `<span class="pr-pts-pill pr-pts-3">${iconHTML('check-circle')}</span>` : `<span class="pr-pts-pill pr-pts-0">${iconHTML('x-circle')}</span>`;
+      const exactPill = exactHit ? `<span class="pr-pts-pill pr-pts-1">${iconHTML('target')} +١</span>` : '';
       return `<div class="pr-match" style="flex-wrap:wrap">
-        <div style="flex:1;min-width:140px"><b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b><div class="pr-match-time">${t('resultPrefix')}${realTxt}</div>${m.stadium ? `<div class="pr-match-time">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}</div>
+        <div style="flex:1;min-width:140px"><b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b><div class="pr-match-time">${t('resultPrefix')}${realTxt}</div>${m.stadium ? `<div class="pr-match-time">${esc(stadiumName(m.stadium))}</div>` : ''}</div>
         <div style="text-align:end"><div class="pr-match-time">${t('yourPredictionPrefix')}${predTxt}${exactTxt}</div>${pill}${exactPill}</div>
       </div>`;
     }).join('');

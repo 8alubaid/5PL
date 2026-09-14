@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import { t, toAr, toWest, roundDisplayName } from './i18n.js';
 import { esc, uid, prToast, toLocalDatetimeValue, makeEmptyDraftMatches } from './utils.js';
-import { SATEAMS, teamPairHTML, teamSelectOptions, stadiumSelectOptions, matchStadiumOptions, stadiumName } from './data.js';
+import { SATEAMS, teamPairHTML, teamSelectOptions, stadiumSelectOptions, matchStadiumOptions, stadiumName, iconHTML } from './data.js';
 import { fmtDT } from './scoring.js';
 import { sSet } from './api.js';
 import { render } from './main.js';
@@ -9,7 +9,7 @@ import { render } from './main.js';
 export function renderAdminRounds(){
   const newRoundForm = `
     <div class="pr-card">
-      <div class="pr-section-title">${t('addNewRound')}</div>
+      <div class="pr-section-title">${iconHTML('add')} ${t('addNewRound')}</div>
       <div class="pr-hint" style="margin-bottom:8px">${t('pasteHint')}</div>
       <textarea class="pr-input" id="paste-fixtures" rows="5" placeholder="مثال:
 الجولة 9
@@ -17,7 +17,7 @@ export function renderAdminRounds(){
 الهلال × النصر
 الاتحاد × الأهلي 20:30"></textarea>
       <div style="margin-top:8px;display:flex;justify-content:flex-end">
-        <button class="pr-btn ghost small" onclick="prParsePastedFixtures()">${t('convertText')}</button>
+        <button class="pr-btn ghost small" onclick="prParsePastedFixtures()">${iconHTML('magic-wand')} ${t('convertText')}</button>
       </div>
       ${state.importStatus ? `<div class="pr-hint" style="margin-top:6px">${esc(state.importStatus)}</div>` : ''}
       <div style="border-top:1px dashed var(--card-border);margin:16px 0"></div>
@@ -63,7 +63,7 @@ export function renderAdminRounds(){
         <div style="flex:1;min-width:150px">
           <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
           <div class="pr-match-time">${fmtDT(m.kickoff)} — <span class="pr-tag ${m.finished?'closed':'open'}">${m.finished?t('finished'):t('resultPending')}</span></div>
-          ${m.stadium ? `<div class="pr-match-time">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}
+          ${m.stadium ? `<div class="pr-match-time">${esc(stadiumName(m.stadium))}</div>` : ''}
           <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12.5px;color:var(--text-dim)">
             <input type="checkbox" ${predictOpen?'checked':''} onchange="prToggleMatchPredictOpen('${rnd.id}','${m.id}',this.checked)">
             ${t('predictOpenLabel')}
@@ -75,7 +75,7 @@ export function renderAdminRounds(){
     const headerButtons = isEditing
       ? `<button class="pr-btn ghost small" onclick="prCancelEditRound()">${t('cancel')}</button>
          <button class="pr-btn small" onclick="prSaveRoundEdits('${rnd.id}')">${t('saveEdit')}</button>`
-      : `<button class="pr-btn ghost small" onclick="prStartEditRound('${rnd.id}')">${t('editRound')}</button>
+      : `<button class="pr-btn ghost small" onclick="prStartEditRound('${rnd.id}')">${iconHTML('edit')} ${t('editRound')}</button>
          <button class="pr-btn danger small" onclick="prDeleteRound('${rnd.id}')">${t('deleteRound')}</button>`;
     return `<div class="pr-card">
       <div class="pr-flex-between"><div class="pr-section-title">${roundDisplayName(rnd.name)}</div>
@@ -166,11 +166,11 @@ function renderDraftMatch(m, idx){
       <select class="pr-select" onchange="prUpdateDraft(${idx},'home',this.value)" style="flex:1;min-width:110px">${teamSelectOptions(m.home)}</select>
       <span style="color:var(--text-dim)">×</span>
       <select class="pr-select" onchange="prUpdateDraft(${idx},'away',this.value)" style="flex:1;min-width:110px">${teamSelectOptions(m.away)}</select>
-      <button class="pr-x-btn" onclick="prRemoveDraft(${idx})">✕</button>
+      <button class="pr-x-btn" onclick="prRemoveDraft(${idx})">${iconHTML('x')}</button>
     </div>
     <label class="pr-label">${t('kickoffLabel')}</label>
     <input class="pr-input" type="datetime-local" value="${m.kickoff||''}" oninput="prUpdateDraft(${idx},'kickoff',this.value)" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif">
-    <label class="pr-label">🏟️ ${t('stadiumLabel')}</label>
+    <label class="pr-label">${t('stadiumLabel')}</label>
     <select class="pr-select" onchange="prUpdateDraft(${idx},'stadium',this.value)" style="width:100%">${stadiumSelectOptions(m.stadium, m.home, m.away)}</select>
     <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;color:var(--text-dim)">
       <input type="checkbox" ${m.predictOpen!==false?'checked':''} onchange="prUpdateDraft(${idx},'predictOpen',this.checked)">
@@ -248,12 +248,12 @@ window.prParsePastedFixtures = function(){
   const missingTime = parsedMatches.filter(m => !m.kickoff).length;
   if(state.lang === 'en'){
     state.importStatus = `Extracted ${parsedMatches.length} match(es) from the text.` +
-      (missingTime ? ` ⚠️ ${missingTime} of them had no clear date — set the time manually below.` : '') +
+      (missingTime ? ` ${missingTime} of them had no clear date — set the time manually below.` : '') +
       (skipped ? ` (Ignored ${skipped} line(s) that only had one team.)` : '') +
       ' ' + t('reviewBeforeSave');
   } else {
     state.importStatus = `تم استخراج ${toAr(parsedMatches.length)} مباراة من النص.` +
-      (missingTime ? ` ⚠️ ${toAr(missingTime)} منها بدون تاريخ واضح — حدد الموعد يدويًا لها بالأسفل.` : '') +
+      (missingTime ? ` ${toAr(missingTime)} منها بدون تاريخ واضح — حدد الموعد يدويًا لها بالأسفل.` : '') +
       (skipped ? ` (تجاهلت ${toAr(skipped)} سطر ما وضح فيه إلا فريق وحد).` : '') +
       ' ' + t('reviewBeforeSave');
   }

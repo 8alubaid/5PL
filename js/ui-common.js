@@ -1,4 +1,5 @@
 import { state, saveLang } from './state.js';
+import { iconHTML } from './data.js';
 
 function applyDirAttrs(){
   const html = document.documentElement;
@@ -8,7 +9,7 @@ function applyDirAttrs(){
 
 export function langToggleBtn(extraClass){
   return `<button class="pr-lang-toggle ${extraClass||''}" onclick="prToggleLang()" title="${state.lang==='en'?'التبديل للعربية':'Switch to English'}">
-    <span class="pr-lang-globe">🌐</span>${state.lang==='en' ? 'العربية' : 'English'}
+    <span class="pr-lang-globe">${iconHTML('globe')}</span>${state.lang==='en' ? 'العربية' : 'English'}
   </button>`;
 }
 

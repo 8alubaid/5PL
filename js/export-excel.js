@@ -128,7 +128,7 @@ window.prExportExcel = async function(){
     'Exact Bonus': s.exactBonusTotal, 'Best Round': roundDisplayName(s.bestRound)
   }) : ({
     الترتيب: i+1, اللاعب: s.player.name, المجموع: s.total,
-    'بونص دقيق 🎯': s.exactBonusTotal, 'أفضل جولة': s.bestRound
+    'بونص دقيق': s.exactBonusTotal, 'أفضل جولة': s.bestRound
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(standRows.length?standRows:[{[en?'Rank':'الترتيب']:''}]), en ? 'Standings' : 'الترتيب');
 

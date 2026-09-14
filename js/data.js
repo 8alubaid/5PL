@@ -72,7 +72,7 @@ export const STADIUM_EN = {
 // ground (renovation, high-demand fixture, etc.) — offered alongside the two teams'
 // home stadiums in the picker.
 export const NEUTRAL_STADIUMS = ["استاد الملك فهد الدولي"];
-export const DRAW_BADGE = { code:'⚖', c1:'#3a3a3a', c2:'#8a8a8a' };
+export const DRAW_BADGE = { c1:'#3a3a3a', c2:'#8a8a8a' };
 
 export function teamName(ar){ return state.lang === 'en' ? (TEAM_EN[ar] || ar) : ar; }
 
@@ -117,8 +117,18 @@ window.prLogoFallback = function(img){
   span.textContent = img.dataset.code;
   img.replaceWith(span);
 };
+// Renders a Phosphor icon (img/icons/<name>.svg) as a currentColor-tinted
+// span, via CSS mask-image rather than <img> — a mask only reads the SVG's
+// alpha shape, ignoring whatever fill color the file itself has, so one
+// export works everywhere regardless of what color it was saved in. Sizes
+// itself to 1em by default so it matches whatever text it sits next to;
+// pass extraStyle to size/color it independently (e.g. leaderboard medals).
+export function iconHTML(name, extraClass, extraStyle){
+  return `<span class="pr-icon ${extraClass||''}" style="--icon-url:url('img/icons/${name}.svg');${extraStyle||''}" aria-hidden="true"></span>`;
+}
+
 export function drawBadgeHTML(extraClass){
-  return `<span class="pr-team-badge pr-draw-badge ${extraClass||''}" style="--bc1:${DRAW_BADGE.c1};--bc2:${DRAW_BADGE.c2}">${DRAW_BADGE.code}</span>`;
+  return `<span class="pr-team-badge pr-draw-badge ${extraClass||''}" style="--bc1:${DRAW_BADGE.c1};--bc2:${DRAW_BADGE.c2}">${iconHTML('scales')}</span>`;
 }
 export function teamPairHTML(ar){
   return `<span class="pr-team-pair">${teamBadgeHTML(ar)}<span>${esc(teamName(ar))}</span></span>`;

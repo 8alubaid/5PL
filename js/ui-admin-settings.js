@@ -3,16 +3,17 @@ import { t, toAr } from './i18n.js';
 import { esc, prToast } from './utils.js';
 import { changeAdminPin } from './api.js';
 import { render } from './main.js';
+import { iconHTML } from './data.js';
 
 export function renderAdminSettings(){
   return `<div class="pr-card">
-    <div class="pr-section-title">${t('settingsTitle')}</div>
+    <div class="pr-section-title">${iconHTML('settings')} ${t('settingsTitle')}</div>
     <label class="pr-label">${t('compNameLabel')}</label>
     <input class="pr-input" value="${state.lang==='en' ? FIXED_TITLE_EN : toAr(esc(state.config.title))}" disabled style="margin-bottom:12px;opacity:0.7">
     <div class="pr-hint">${t('pointsRulesHint')}</div>
   </div>
   <div class="pr-card">
-    <div class="pr-section-title">${t('changeAdminPinTitle')}</div>
+    <div class="pr-section-title">${iconHTML('key')} ${t('changeAdminPinTitle')}</div>
     <label class="pr-label">${t('currentPinLabel')}</label>
     <input class="pr-input" id="cap-current" type="password" inputmode="numeric" style="margin-bottom:12px">
     <label class="pr-label">${t('newPinLabel')}</label>

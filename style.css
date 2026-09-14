@@ -314,7 +314,18 @@ img.pr-team-badge {
 .pr-tag { font-size:11px; padding:2px 8px; border-radius:999px; font-weight:400; }
 .pr-tag.open { background: rgba(53,199,120,0.2); color: var(--green-bright); }
 .pr-tag.closed { background: rgba(224,87,74,0.18); color:#ff9d90; }
+/* Phosphor icons — img/icons/<name>.svg, rendered as a currentColor mask so
+   one export tints correctly wherever it's placed (gold, gray, red, etc.). */
+.pr-icon {
+  display:inline-block; flex-shrink:0; width:1em; height:1em; vertical-align:-0.15em;
+  background-color: currentColor;
+  -webkit-mask-image: var(--icon-url); mask-image: var(--icon-url);
+  -webkit-mask-size: contain; mask-size: contain;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+}
 .pr-x-btn { background:none; border:none; color: var(--red); cursor:pointer; font-size:18px; padding:10px 12px; margin:-10px -12px; transition: transform .15s; }
+.pr-x-btn .pr-icon { width:0.7em; height:0.7em; }
 .pr-x-btn:hover { transform: scale(1.2); }
 .pr-flex-between { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
 .pr-teams-list { color: var(--text-dim); font-size:11.5px; margin-top:6px; }

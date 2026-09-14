@@ -3,13 +3,14 @@ import { t, toAr } from './i18n.js';
 import { esc, uid, prToast } from './utils.js';
 import { sSet } from './api.js';
 import { render } from './main.js';
+import { iconHTML } from './data.js';
 
 function randPin(){ return String(Math.floor(1000 + Math.random()*9000)); }
 
 export function renderAdminPlayers(){
   const addForm = `
     <div class="pr-card">
-      <div class="pr-section-title">${t('addPlayer')}</div>
+      <div class="pr-section-title">${iconHTML('add')} ${t('addPlayer')}</div>
       <div class="pr-admin-form-row">
         <input class="pr-input" id="ap-name" placeholder="${t('namePlaceholder')}">
         <input class="pr-input" id="ap-email" type="email" placeholder="${t('emailPlaceholder2')}">

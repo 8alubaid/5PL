@@ -1,10 +1,22 @@
 import { state } from './state.js';
 import { t, toAr } from './i18n.js';
 import { esc, prToast } from './utils.js';
-import { SATEAMS, teamName, teamBadgeHTML, teamPairHTML, playerAvatarHTML } from './data.js';
+import { SATEAMS, teamName, teamBadgeHTML, teamPairHTML, playerAvatarHTML, iconHTML } from './data.js';
 import { computeHankaScore, computeHankaStandings } from './scoring.js';
 import { saveHankaGuess } from './api.js';
 import { render } from './main.js';
+
+// Shared icon per حنكة field, since each label (champion/top3/relegated/
+// scorer/assist/contributor) shows up three times across this file — the
+// guess form, the saved summary, and the results breakdown.
+const HANKA_ICONS = {
+  hankaChampionLabel: 'trophy', hankaTop3Label: 'ranking', hankaRelegatedLabel: 'trend-down',
+  hankaScorerLabel: 'soccer-ball', hankaAssistLabel: 'target', hankaContributorLabel: 'star',
+  hankaPtsChampion: 'trophy', hankaPtsTop3: 'ranking', hankaPtsRelegated: 'trend-down',
+  hankaPtsScorer: 'soccer-ball', hankaPtsAssist: 'target', hankaPtsContributor: 'star'
+};
+function hl(key){ return `${iconHTML(HANKA_ICONS[key])} ${t(key)}`; }
+function hitOrMiss(hit){ return hit ? `${iconHTML('check-circle')} +٥` : iconHTML('x-circle'); }
 
 function emptyGuess(){
   return { champion: null, top3: [], relegated: [], scorer: '', assist: '', contributor: '' };
@@ -37,36 +49,36 @@ function renderEditForm(){
     <div class="pr-hint" style="margin-bottom:14px">${t('hankaHint')}</div>
 
     <div class="pr-hanka-field">
-      <div class="pr-flex-between"><b>${t('hankaChampionLabel')}</b><span class="pr-hint">${t('hankaPickChampionHint')}</span></div>
+      <div class="pr-flex-between"><b>${hl('hankaChampionLabel')}</b><span class="pr-hint">${t('hankaPickChampionHint')}</span></div>
       ${teamPickGrid(d.champion ? [d.champion] : [], 'prHankaPickChampion')}
     </div>
 
     <div class="pr-hanka-field">
-      <div class="pr-flex-between"><b>${t('hankaTop3Label')}</b><span class="pr-hint">${t('hankaPickThreeHint')} (${toAr(d.top3.length)}/٣)</span></div>
+      <div class="pr-flex-between"><b>${hl('hankaTop3Label')}</b><span class="pr-hint">${t('hankaPickThreeHint')} (${toAr(d.top3.length)}/٣)</span></div>
       ${teamPickGrid(d.top3, 'prHankaToggleTop3')}
     </div>
 
     <div class="pr-hanka-field">
-      <div class="pr-flex-between"><b>${t('hankaRelegatedLabel')}</b><span class="pr-hint">${t('hankaPickThreeHint')} (${toAr(d.relegated.length)}/٣)</span></div>
+      <div class="pr-flex-between"><b>${hl('hankaRelegatedLabel')}</b><span class="pr-hint">${t('hankaPickThreeHint')} (${toAr(d.relegated.length)}/٣)</span></div>
       ${teamPickGrid(d.relegated, 'prHankaToggleRelegated')}
     </div>
 
     <div class="pr-hanka-field">
-      <label class="pr-label">${t('hankaScorerLabel')}</label>
+      <label class="pr-label">${hl('hankaScorerLabel')}</label>
       <input class="pr-input" value="${esc(d.scorer)}" placeholder="${t('hankaNamePlaceholder')}" oninput="prHankaSetText('scorer', this.value)">
     </div>
     <div class="pr-hanka-field">
-      <label class="pr-label">${t('hankaAssistLabel')}</label>
+      <label class="pr-label">${hl('hankaAssistLabel')}</label>
       <input class="pr-input" value="${esc(d.assist)}" placeholder="${t('hankaNamePlaceholder')}" oninput="prHankaSetText('assist', this.value)">
     </div>
     <div class="pr-hanka-field">
-      <label class="pr-label">${t('hankaContributorLabel')}</label>
+      <label class="pr-label">${hl('hankaContributorLabel')}</label>
       <input class="pr-input" value="${esc(d.contributor)}" placeholder="${t('hankaNamePlaceholder')}" oninput="prHankaSetText('contributor', this.value)">
     </div>
 
     <div id="hanka-msg" class="pr-hint"></div>
     <div style="margin-top:10px;display:flex;justify-content:flex-end">
-      <button class="pr-btn" id="hanka-save-btn" onclick="prHankaSave()">${t('hankaSaveBtn')}</button>
+      <button class="pr-btn" id="hanka-save-btn" onclick="prHankaSave()">${iconHTML('save')} ${t('hankaSaveBtn')}</button>
     </div>
   </div>`;
 }
@@ -74,16 +86,16 @@ function renderEditForm(){
 function renderSummary(guess){
   const teamsList = arr => arr.map(team => teamPairHTML(team)).join(' ');
   return `<div class="pr-card">
-    <div class="pr-section-title">${t('hankaSavedTitle')}</div>
-    <div class="pr-hanka-summary-row"><b>${t('hankaChampionLabel')}</b>: ${teamPairHTML(guess.champion)}</div>
-    <div class="pr-hanka-summary-row"><b>${t('hankaTop3Label')}</b>: ${teamsList(guess.top3)}</div>
-    <div class="pr-hanka-summary-row"><b>${t('hankaRelegatedLabel')}</b>: ${teamsList(guess.relegated)}</div>
-    <div class="pr-hanka-summary-row"><b>${t('hankaScorerLabel')}</b>: ${esc(guess.scorer)}</div>
-    <div class="pr-hanka-summary-row"><b>${t('hankaAssistLabel')}</b>: ${esc(guess.assist)}</div>
-    <div class="pr-hanka-summary-row"><b>${t('hankaContributorLabel')}</b>: ${esc(guess.contributor)}</div>
-    ${state.hanka.locked ? `<div class="pr-hint" style="margin-top:10px">${t('hankaLockedHint')}</div>` : `
+    <div class="pr-section-title">${iconHTML('check-circle')} ${t('hankaSavedTitle')}</div>
+    <div class="pr-hanka-summary-row"><b>${hl('hankaChampionLabel')}</b>: ${teamPairHTML(guess.champion)}</div>
+    <div class="pr-hanka-summary-row"><b>${hl('hankaTop3Label')}</b>: ${teamsList(guess.top3)}</div>
+    <div class="pr-hanka-summary-row"><b>${hl('hankaRelegatedLabel')}</b>: ${teamsList(guess.relegated)}</div>
+    <div class="pr-hanka-summary-row"><b>${hl('hankaScorerLabel')}</b>: ${esc(guess.scorer)}</div>
+    <div class="pr-hanka-summary-row"><b>${hl('hankaAssistLabel')}</b>: ${esc(guess.assist)}</div>
+    <div class="pr-hanka-summary-row"><b>${hl('hankaContributorLabel')}</b>: ${esc(guess.contributor)}</div>
+    ${state.hanka.locked ? `<div class="pr-hint" style="margin-top:10px">${iconHTML('lock')} ${t('hankaLockedHint')}</div>` : `
     <div style="margin-top:14px;display:flex;justify-content:flex-end">
-      <button class="pr-btn ghost" onclick="prHankaEdit()">${t('hankaEditBtn')}</button>
+      <button class="pr-btn ghost" onclick="prHankaEdit()">${iconHTML('edit')} ${t('hankaEditBtn')}</button>
     </div>`}
   </div>`;
 }
@@ -96,23 +108,23 @@ function renderResultsView(){
   const teamsList = arr => (arr||[]).map(team => teamPairHTML(team)).join(' ');
 
   const answersCard = `<div class="pr-card">
-    <div class="pr-section-title">${t('hankaResultsTitle')}</div>
-    <div class="pr-hanka-summary-row"><b>${t('hankaChampionLabel')}</b>: ${answers.champion ? teamPairHTML(answers.champion) : '—'}</div>
-    <div class="pr-hanka-summary-row"><b>${t('hankaTop3Label')}</b>: ${teamsList(answers.top3) || '—'}</div>
-    <div class="pr-hanka-summary-row"><b>${t('hankaRelegatedLabel')}</b>: ${teamsList(answers.relegated) || '—'}</div>
-    <div class="pr-hanka-summary-row"><b>${t('hankaScorerLabel')}</b>: ${esc(answers.scorer || '—')}</div>
-    <div class="pr-hanka-summary-row"><b>${t('hankaAssistLabel')}</b>: ${esc(answers.assist || '—')}</div>
-    <div class="pr-hanka-summary-row"><b>${t('hankaContributorLabel')}</b>: ${esc(answers.contributor || '—')}</div>
+    <div class="pr-section-title">${iconHTML('flag-checkered')} ${t('hankaResultsTitle')}</div>
+    <div class="pr-hanka-summary-row"><b>${hl('hankaChampionLabel')}</b>: ${answers.champion ? teamPairHTML(answers.champion) : '—'}</div>
+    <div class="pr-hanka-summary-row"><b>${hl('hankaTop3Label')}</b>: ${teamsList(answers.top3) || '—'}</div>
+    <div class="pr-hanka-summary-row"><b>${hl('hankaRelegatedLabel')}</b>: ${teamsList(answers.relegated) || '—'}</div>
+    <div class="pr-hanka-summary-row"><b>${hl('hankaScorerLabel')}</b>: ${esc(answers.scorer || '—')}</div>
+    <div class="pr-hanka-summary-row"><b>${hl('hankaAssistLabel')}</b>: ${esc(answers.assist || '—')}</div>
+    <div class="pr-hanka-summary-row"><b>${hl('hankaContributorLabel')}</b>: ${esc(answers.contributor || '—')}</div>
   </div>`;
 
   const myCard = myGuess ? `<div class="pr-card">
     <div class="pr-flex-between"><div class="pr-section-title">${t('hankaMyGuessTitle')}</div><span style="color:var(--gold-bright);font-weight:700">${t('hankaYourPoints')}: ${toAr(myScore.total)}</span></div>
-    <div class="pr-hanka-summary-row">${t('hankaPtsChampion')}: ${teamPairHTML(myGuess.champion)} ${myScore.champion ? '✅ +٥' : '❌'}</div>
-    <div class="pr-hanka-summary-row">${t('hankaPtsTop3')}: ${teamsList(myGuess.top3)} (+${toAr(myScore.top3)})</div>
-    <div class="pr-hanka-summary-row">${t('hankaPtsRelegated')}: ${teamsList(myGuess.relegated)} (+${toAr(myScore.relegated)})</div>
-    <div class="pr-hanka-summary-row">${t('hankaPtsScorer')}: ${esc(myGuess.scorer)} ${myScore.scorer ? '✅ +٥' : '❌'}</div>
-    <div class="pr-hanka-summary-row">${t('hankaPtsAssist')}: ${esc(myGuess.assist)} ${myScore.assist ? '✅ +٥' : '❌'}</div>
-    <div class="pr-hanka-summary-row">${t('hankaPtsContributor')}: ${esc(myGuess.contributor)} ${myScore.contributor ? '✅ +٥' : '❌'}</div>
+    <div class="pr-hanka-summary-row">${hl('hankaPtsChampion')}: ${teamPairHTML(myGuess.champion)} ${hitOrMiss(myScore.champion)}</div>
+    <div class="pr-hanka-summary-row">${hl('hankaPtsTop3')}: ${teamsList(myGuess.top3)} (+${toAr(myScore.top3)})</div>
+    <div class="pr-hanka-summary-row">${hl('hankaPtsRelegated')}: ${teamsList(myGuess.relegated)} (+${toAr(myScore.relegated)})</div>
+    <div class="pr-hanka-summary-row">${hl('hankaPtsScorer')}: ${esc(myGuess.scorer)} ${hitOrMiss(myScore.scorer)}</div>
+    <div class="pr-hanka-summary-row">${hl('hankaPtsAssist')}: ${esc(myGuess.assist)} ${hitOrMiss(myScore.assist)}</div>
+    <div class="pr-hanka-summary-row">${hl('hankaPtsContributor')}: ${esc(myGuess.contributor)} ${hitOrMiss(myScore.contributor)}</div>
   </div>` : '';
 
   const rows = standings.map((s,i) => `<tr class="${s.player.id===state.session.playerId?'pr-row-me':''}">
@@ -122,7 +134,7 @@ function renderResultsView(){
   </tr>`).join('');
 
   const standingsCard = `<div class="pr-card">
-    <div class="pr-section-title">${t('hankaStandingsTitle')}</div>
+    <div class="pr-section-title">${iconHTML('medal')} ${t('hankaStandingsTitle')}</div>
     <div style="overflow-x:auto"><table class="pr-table">
       <thead><tr><th></th><th>${t('colPlayer')}</th><th>${t('colTotal')}</th></tr></thead>
       <tbody>${rows}</tbody>

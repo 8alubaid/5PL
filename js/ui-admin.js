@@ -6,15 +6,16 @@ import { renderAdminPlayers } from './ui-admin-players.js';
 import { renderAdminSettings } from './ui-admin-settings.js';
 import { renderAdminHanka } from './ui-admin-hanka.js';
 import { render } from './main.js';
+import { iconHTML } from './data.js';
 
 export function renderAdminTab(content){
   content.innerHTML = `
     <div class="pr-card" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
       <div>
-        <div class="pr-section-title" style="margin-bottom:2px">${t('backupTitle')}</div>
+        <div class="pr-section-title" style="margin-bottom:2px">${iconHTML('save')} ${t('backupTitle')}</div>
         <div class="pr-hint">${t('backupHint')}</div>
       </div>
-      <button class="pr-btn" onclick="prExportExcel()">${t('downloadExcel')}</button>
+      <button class="pr-btn" onclick="prExportExcel()">${iconHTML('download')} ${t('downloadExcel')}</button>
     </div>
     <div class="pr-tabs" style="margin-bottom:16px">
       <button class="pr-tab ${state.adminSubTab==='rounds'?'active':''}" onclick="prAdminSub('rounds')">${t('adminTabRounds')}</button>

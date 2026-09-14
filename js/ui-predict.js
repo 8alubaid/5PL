@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { t } from './i18n.js';
 import { esc, prToast } from './utils.js';
 import { toAr, toWest, roundDisplayName } from './i18n.js';
-import { teamName, teamPairHTML, teamBadgeHTML, drawBadgeHTML, stadiumName, playerAvatarHTML } from './data.js';
+import { teamName, teamPairHTML, teamBadgeHTML, drawBadgeHTML, stadiumName, playerAvatarHTML, iconHTML } from './data.js';
 import { calcRoundScore, matchOutcome, findOpenRoundId, fmtDT, isMatchPredictable, isMatchStarted, countdownParts } from './scoring.js';
 import { savePrediction } from './api.js';
 import { render } from './main.js';
@@ -54,7 +54,7 @@ function renderRevealedRow(m){
     if(pred && pred.outcome){
       txt = outcomeLabel(pred.outcome, m);
       if(pred.exact && pred.exact.home !== '' && pred.exact.home != null){
-        txt += ` (🎯 ${toAr(pred.exact.home)}-${toAr(pred.exact.away)})`;
+        txt += ` (${iconHTML('target')} ${toAr(pred.exact.home)}-${toAr(pred.exact.away)})`;
       }
       if(matchDecided){
         const correct = pred.outcome === realOutcome;
@@ -71,7 +71,7 @@ function renderRevealedRow(m){
       <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
       <span class="pr-match-time">${m.finished ? t('resultPrefix')+realTxt : fmtDT(m.kickoff)}</span>
     </div>
-    ${m.stadium ? `<div class="pr-hint" style="margin:-4px 0 8px">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}
+    ${m.stadium ? `<div class="pr-hint" style="margin:-4px 0 8px">${esc(stadiumName(m.stadium))}</div>` : ''}
     <div>${allPicks || `<span class="pr-hint">${t('noOneYet')}</span>`}</div>
   </div>`;
 }
@@ -82,8 +82,8 @@ function renderPendingRow(m){
       <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
       <span class="pr-match-time">${fmtDT(m.kickoff)}</span>
     </div>
-    ${m.stadium ? `<div class="pr-hint" style="margin:-2px 0 6px">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}
-    <div class="pr-hint">🔒 ${t('predictionsNotOpenYet')}</div>
+    ${m.stadium ? `<div class="pr-hint" style="margin:-2px 0 6px">${esc(stadiumName(m.stadium))}</div>` : ''}
+    <div class="pr-hint">${iconHTML('lock')} ${t('predictionsNotOpenYet')}</div>
   </div>`;
 }
 
@@ -117,15 +117,15 @@ function renderSummaryRow(m){
   const d = state.predictDraft[m.id] || {};
   let txt = d.outcome ? outcomeLabel(d.outcome, m) : t('noPrediction');
   if(d.isExact && d.exactHome !== '' && d.exactHome != null && d.exactAway !== '' && d.exactAway != null){
-    txt += ` (🎯 ${toAr(d.exactHome)}-${toAr(d.exactAway)})`;
+    txt += ` (${iconHTML('target')} ${toAr(d.exactHome)}-${toAr(d.exactAway)})`;
   }
   return `<div style="padding:12px 6px;border-bottom:1px dashed rgba(255,255,255,0.08)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
       <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
       <span class="pr-match-time">${fmtDT(m.kickoff)}</span>
     </div>
-    ${m.stadium ? `<div class="pr-hint" style="margin:-2px 0 6px">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}
-    <div class="pr-hint">✅ ${t('yourPredictionPrefix')}<b style="color:var(--text)">${txt}</b></div>
+    ${m.stadium ? `<div class="pr-hint" style="margin:-2px 0 6px">${esc(stadiumName(m.stadium))}</div>` : ''}
+    <div class="pr-hint">${iconHTML('check-circle')} ${t('yourPredictionPrefix')}<b style="color:var(--text)">${txt}</b></div>
     ${renderCountdown(m)}
   </div>`;
 }
@@ -139,7 +139,7 @@ function renderPredictRow(m, exactLocked){
       <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
       <span class="pr-match-time">${fmtDT(m.kickoff)}</span>
     </div>
-    ${m.stadium ? `<div class="pr-hint" style="margin:-4px 0 8px">🏟️ ${esc(stadiumName(m.stadium))}</div>` : ''}
+    ${m.stadium ? `<div class="pr-hint" style="margin:-4px 0 8px">${esc(stadiumName(m.stadium))}</div>` : ''}
     ${renderCountdown(m)}
     <div class="pr-outcome-row" style="margin-top:10px">
       ${btn('home', teamBadgeHTML(m.home,'pr-team-badge-lg'), esc(teamName(m.home)))}
@@ -147,10 +147,10 @@ function renderPredictRow(m, exactLocked){
       ${btn('away', teamBadgeHTML(m.away,'pr-team-badge-lg'), esc(teamName(m.away)))}
     </div>
     ${exactLocked ? `
-    <div class="pr-hint" style="margin-top:8px">${t('exactUsedElsewhere')}</div>` : `
+    <div class="pr-hint" style="margin-top:8px">${iconHTML('target')} ${t('exactUsedElsewhere')}</div>` : `
     <label class="pr-exact-toggle">
       <input type="checkbox" ${d.isExact?'checked':''} onchange="prToggleExact('${m.id}', this.checked)">
-      ${t('exactToggleLabel')}
+      ${iconHTML('target')} ${t('exactToggleLabel')}
     </label>
     ${d.isExact ? `
     <div class="pr-score-box" style="margin-top:8px">
@@ -167,19 +167,19 @@ function renderRoundLeaderboard(rnd){
   const rows = state.players
     .map(pl => ({ player: pl, score: calcRoundScore(pl.id, rnd) }))
     .sort((a,b) => b.score.total - a.score.total || b.score.correctCount - a.score.correctCount);
-  const medals = ['🥇','🥈','🥉'];
+  const medalColors = ['var(--gold-bright)', '#c9ced6', '#c98a52'];
   const tableRows = rows.map((r,i) => `
     <tr class="${r.player.id===state.session.playerId?'pr-row-me':''}">
-      <td class="pr-rank">${medals[i] || toAr(i+1)}</td>
+      <td class="pr-rank">${i < 3 ? iconHTML('medal','',`color:${medalColors[i]}`) : toAr(i+1)}</td>
       <td><span class="pr-player-cell">${playerAvatarHTML(r.player,'pr-avatar-sm')}<span>${esc(r.player.name)}</span></span></td>
       <td class="pr-total">${toAr(r.score.total)}</td>
       <td>${toAr(r.score.correctCount)}/${toAr(rnd.matches.length)}</td>
-      <td>${r.score.exactBonus ? '🎯 +'+toAr(r.score.exactBonus) : '—'}</td>
+      <td>${r.score.exactBonus ? iconHTML('target')+' +'+toAr(r.score.exactBonus) : '—'}</td>
     </tr>`).join('');
   return `<div class="pr-card" style="margin-top:16px">
-    <div class="pr-section-title">${t('roundLeaderboardTitle',{round:roundDisplayName(rnd.name)})}</div>
+    <div class="pr-section-title">${iconHTML('medal')} ${t('roundLeaderboardTitle',{round:roundDisplayName(rnd.name)})}</div>
     <div style="overflow-x:auto"><table class="pr-table">
-      <thead><tr><th></th><th>${t('colPlayer')}</th><th>${t('colTotal')}</th><th>${t('colCorrect')}</th><th>${t('colExactBonus')}</th></tr></thead>
+      <thead><tr><th></th><th>${t('colPlayer')}</th><th>${t('colTotal')}</th><th>${t('colCorrect')}</th><th>${iconHTML('target')} ${t('colExactBonus')}</th></tr></thead>
       <tbody>${tableRows}</tbody>
     </table></div>
   </div>`;
@@ -225,11 +225,11 @@ export function renderPredictTab(){
       ${rows}
       ${anyPredictable && state.predictViewMode === 'summary' ? `
       <div style="margin-top:14px;display:flex;justify-content:flex-end">
-        <button class="pr-btn ghost" onclick="prEditPredictions()">${t('editPredictions')}</button>
+        <button class="pr-btn ghost" onclick="prEditPredictions()">${iconHTML('edit')} ${t('editPredictions')}</button>
       </div>` : ''}
       ${anyPredictable && state.predictViewMode !== 'summary' ? `
       <div style="margin-top:14px;display:flex;justify-content:flex-end">
-        <button class="pr-btn" id="predict-save-btn" onclick="prSavePredictions('${rnd.id}')">${t('savePredictions')}</button>
+        <button class="pr-btn" id="predict-save-btn" onclick="prSavePredictions('${rnd.id}')">${iconHTML('save')} ${t('savePredictions')}</button>
       </div>
       <div id="predict-msg" class="pr-hint"></div>` : ''}
     </div>
