@@ -10,6 +10,8 @@ body { min-height: 100vh; min-height: 100dvh; }
   --gold: #d9a441;
   --gold-bright: #f0c25e;
   --gold-soft: rgba(217,164,65,0.16);
+  --purple: #9d4edd;
+  --purple-bright: #d9a5ff;
   --text: #f3efe2;
   --text-dim: #9fbcae;
   --red: #e0574a;
@@ -287,6 +289,18 @@ img.pr-team-badge {
 .pr-pts-3 { background: rgba(53,199,120,0.22); color: var(--green-bright); }
 .pr-pts-1 { background: rgba(217,164,65,0.22); color: var(--gold-bright); }
 .pr-pts-0 { background: rgba(224,87,74,0.18); color: #ff9d90; }
+
+/* Exact-score hit — rarer than a plain correct pick, so it gets its own
+   purple-with-a-gold-halo treatment instead of the usual green. */
+@keyframes pr-exact-glow {
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(240,194,94,0.35), inset 0 0 0 1px rgba(240,194,94,0.35); }
+  50% { box-shadow: 0 0 15px 3px rgba(240,194,94,0.75), inset 0 0 0 1px rgba(240,194,94,0.6); }
+}
+.pr-exact-hit, .pr-pts-exact {
+  background: rgba(157,78,221,0.28);
+  color: var(--purple-bright);
+  animation: pr-exact-glow 2.2s ease-in-out infinite;
+}
 
 /* Leaderboard */
 .pr-table { width:100%; border-collapse: collapse; font-size:13.5px; }

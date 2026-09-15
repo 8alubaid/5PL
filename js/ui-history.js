@@ -82,7 +82,7 @@ export function renderHistoryTab(){
       const correct = m.finished && pred && pred.outcome === real;
       const exactTxt = pred && pred.exact ? ` ${iconHTML('target')} ${toAr(pred.exact.home)}-${toAr(pred.exact.away)}` : '';
       const exactHit = m.finished && pred && pred.exact && Number(pred.exact.home) === m.homeScore && Number(pred.exact.away) === m.awayScore;
-      const pill = !m.finished ? '' : correct ? `<span class="pr-pts-pill pr-pts-3">${iconHTML('check-circle')}</span>` : `<span class="pr-pts-pill pr-pts-0">${iconHTML('x-circle')}</span>`;
+      const pill = !m.finished ? '' : exactHit ? `<span class="pr-pts-pill pr-pts-exact">${iconHTML('check-circle')}</span>` : correct ? `<span class="pr-pts-pill pr-pts-3">${iconHTML('check-circle')}</span>` : `<span class="pr-pts-pill pr-pts-0">${iconHTML('x-circle')}</span>`;
       const exactPill = exactHit ? `<span class="pr-pts-pill pr-pts-1">${iconHTML('target')} +١</span>` : '';
       return `<div class="pr-match" style="flex-wrap:wrap">
         <div style="flex:1;min-width:140px"><b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b><div class="pr-match-time">${t('resultPrefix')}${realTxt}</div>${m.stadium ? `<div class="pr-match-time">${esc(stadiumName(m.stadium))}</div>` : ''}</div>
