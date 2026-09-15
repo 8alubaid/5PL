@@ -272,3 +272,199 @@ function doPost(e) {
   return ContentService.createTextOutput(JSON.stringify({ ok: true }))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+/**
+ * مزامنة تلقائية من matchesio.com — بمجرد ما تخلص كل مباريات آخر جولة عندنا
+ * (تصير "Played" في matchesio)، تضيف الجولة اللي بعدها تلقائيًا. وبكل تشغيلة
+ * تحدّث أي نتيجة صارت "Played" بس ما زلنا مسجلينها ناقصة.
+ *
+ * تفعيلها مرة وحدة: من محرر Apps Script شغّل الدالة installMatchesioTrigger
+ * (تنشئ trigger زمني يشغّل runMatchesioSync كل ساعة). قبلها جرّب runMatchesioSync
+ * يدويًا مرة واحدة من قائمة Run عشان تتأكد كل شي يشتغل صح ويطلب صلاحية الوصول
+ * لموقع matchesio.com.
+ */
+
+var MATCHESIO_JSON_URL = 'https://www.matchesio.com/competition/pro-league-sa/export/json/';
+
+// أسماء الفرق كما تجي من matchesio → نفس الاسم العربي المستخدم في SATEAMS بالموقع.
+var MATCHESIO_TEAM_MAP = {
+  'Al-Hilal Saudi FC': 'الهلال',
+  'Al-Nassr': 'النصر',
+  'Al-Ittihad FC': 'الاتحاد',
+  'Al-Ahli Jeddah': 'الأهلي',
+  'Al-Qadisiyah FC': 'القادسية',
+  'Al Shabab': 'الشباب',
+  'Al-Fateh': 'الفتح',
+  'Al Khaleej Saihat': 'الخليج',
+  'Al Taawon': 'التعاون',
+  'Abha': 'أبها',
+  'NEOM': 'نيوم',
+  'Al-Fayha': 'الفيحاء',
+  'Al-Ettifaq': 'الاتفاق',
+  'Al-Hazm': 'الحزم',
+  'Al Riyadh': 'الرياض',
+  'Al Diriyah': 'الدرعية',
+  'Al Kholood': 'الخلود',
+  'Al-Faisaly FC': 'الفيصلي'
+};
+
+// نفس TEAM_STADIUM في js/data.js — ملعب الفريق المضيف الافتراضي، مو ملعب matchesio
+// المحدد، عشان يطابق نفس الأسلوب اللي الجولات الحالية متخزنة فيه أصلًا.
+var MATCHESIO_TEAM_STADIUM = {
+  'الهلال': 'ملعب الهلال', 'النصر': 'ملعب النصر',
+  'الاتحاد': 'ملعب الاتحاد', 'الأهلي': 'ملعب الأهلي',
+  'القادسية': 'ملعب القادسية', 'الشباب': 'ملعب الشباب',
+  'الفتح': 'ملعب الفتح', 'الخليج': 'ملعب الخليج',
+  'التعاون': 'ملعب التعاون', 'أبها': 'ملعب أبها',
+  'نيوم': 'ملعب نيوم', 'الفيحاء': 'ملعب الفيحاء',
+  'الاتفاق': 'ملعب الاتفاق', 'الحزم': 'ملعب نادي الحزم',
+  'الرياض': 'ملعب الرياض', 'الدرعية': 'ملعب الدرعية',
+  'الخلود': 'ملعب الخلود', 'الفيصلي': 'ملعب الفيصلي'
+};
+
+function uid_(prefix) {
+  return prefix + '_' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+}
+
+function fetchMatchesioMatches_() {
+  var resp = UrlFetchApp.fetch(MATCHESIO_JSON_URL, { muteHttpExceptions: true });
+  if (resp.getResponseCode() !== 200) {
+    throw new Error('matchesio HTTP ' + resp.getResponseCode());
+  }
+  return JSON.parse(resp.getContentText());
+}
+
+function roundMatchday_(name) {
+  var m = /الجولة\s*(\d+)/.exec(name || '');
+  return m ? Number(m[1]) : null;
+}
+
+function syncFromMatchesio_() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  var result = { changed: false, scoresUpdated: 0, roundImported: null, error: null };
+  try {
+    var fixtures;
+    try {
+      fixtures = fetchMatchesioMatches_();
+    } catch (fetchErr) {
+      result.error = 'fetch: ' + fetchErr;
+      return result;
+    }
+
+    var sheet = getSheet_();
+    var data = sheet.getDataRange().getValues();
+    var roundsRowIndex = -1, rounds = [];
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === 'rounds') {
+        roundsRowIndex = i;
+        try { rounds = JSON.parse(data[i][1]) || []; } catch (e) { rounds = []; }
+        break;
+      }
+    }
+    if (roundsRowIndex === -1) { result.error = 'no rounds key yet'; return result; }
+
+    // فهرسة مباريات matchesio حسب "رقم الجولة|الفريق المضيف|الفريق الضيف" عشان
+    // نستخدمها بتحديث النتائج، وحسب رقم الجولة لوحده عشان نجيب جولة كاملة جديدة.
+    var byKey = {}, byMatchday = {};
+    fixtures.forEach(function (f) {
+      var home = MATCHESIO_TEAM_MAP[f.homeTeam], away = MATCHESIO_TEAM_MAP[f.awayTeam];
+      if (!home || !away) return; // اسم فريق ما نعرفه — تجاهل هذي المباراة بدل ما نخمّن
+      f._home = home; f._away = away;
+      byKey[f.matchday + '|' + home + '|' + away] = f;
+      (byMatchday[f.matchday] = byMatchday[f.matchday] || []).push(f);
+    });
+
+    // ١) عبّي نتيجة أي مباراة صارت "Played" في matchesio وعندنا لسه ناقصة أو غلط.
+    rounds.forEach(function (rnd) {
+      var md = roundMatchday_(rnd.name);
+      if (md == null) return;
+      rnd.matches.forEach(function (m) {
+        var f = byKey[md + '|' + m.home + '|' + m.away];
+        if (!f || f.status !== 'Played' || !f.result) return;
+        var rm = /^(\d+)\s*[-–]\s*(\d+)$/.exec(String(f.result).trim());
+        if (!rm) return;
+        var hs = Number(rm[1]), as = Number(rm[2]);
+        if (m.finished && m.homeScore === hs && m.awayScore === as) return; // متطابقة أصلًا
+        m.homeScore = hs; m.awayScore = as; m.finished = true;
+        result.scoresUpdated++;
+        result.changed = true;
+      });
+    });
+
+    // ٢) إذا آخر جولة عندنا خلصت كل مبارياتها، جيب الجولة اللي بعدها.
+    var maxMd = null;
+    rounds.forEach(function (rnd) {
+      var md = roundMatchday_(rnd.name);
+      if (md != null && (maxMd == null || md > maxMd)) maxMd = md;
+    });
+    if (maxMd != null) {
+      var currentRound = rounds.filter(function (r) { return roundMatchday_(r.name) === maxMd; })[0];
+      var currentFullyFinished = currentRound && currentRound.matches.length > 0 &&
+        currentRound.matches.every(function (m) { return m.finished; });
+      var nextMd = maxMd + 1;
+      var nextAlreadyExists = rounds.some(function (r) { return roundMatchday_(r.name) === nextMd; });
+      var nextFixtures = byMatchday[nextMd] || [];
+      if (currentFullyFinished && !nextAlreadyExists && nextFixtures.length > 0) {
+        var allMapped = fixtures.filter(function (f) { return f.matchday === nextMd; })
+          .every(function (f) { return MATCHESIO_TEAM_MAP[f.homeTeam] && MATCHESIO_TEAM_MAP[f.awayTeam]; });
+        if (allMapped) {
+          var newMatches = nextFixtures
+            .slice()
+            .sort(function (a, b) { return new Date(a.dateTime) - new Date(b.dateTime); })
+            .map(function (f) {
+              return {
+                id: uid_('mt'),
+                home: f._home, away: f._away,
+                kickoff: f.dateTime ? new Date(f.dateTime).toISOString() : null,
+                stadium: MATCHESIO_TEAM_STADIUM[f._home] || '',
+                predictOpen: true,
+                homeScore: null, awayScore: null, finished: false
+              };
+            });
+          rounds.push({ id: uid_('rd'), name: 'الجولة ' + nextMd, matches: newMatches });
+          result.roundImported = nextMd;
+          result.changed = true;
+        } else {
+          result.error = 'matchday ' + nextMd + ' has an unmapped team name — skipped this run';
+        }
+      }
+    }
+
+    if (result.changed) {
+      sheet.getRange(roundsRowIndex + 1, 2).setValue(JSON.stringify(rounds));
+    }
+    return result;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function runMatchesioSync() {
+  var result = syncFromMatchesio_();
+  var sheet = getSheet_();
+  var data = sheet.getDataRange().getValues();
+  var logRow = -1;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === 'matchesioSyncLog') { logRow = i; break; }
+  }
+  var logEntry = JSON.stringify({
+    ranAt: new Date().toISOString(),
+    scoresUpdated: result.scoresUpdated,
+    roundImported: result.roundImported,
+    error: result.error
+  });
+  if (logRow === -1) sheet.appendRow(['matchesioSyncLog', logEntry]);
+  else sheet.getRange(logRow + 1, 2).setValue(logEntry);
+  Logger.log(logEntry);
+  return result;
+}
+
+function installMatchesioTrigger() {
+  var existing = ScriptApp.getProjectTriggers().filter(function (t) {
+    return t.getHandlerFunction() === 'runMatchesioSync';
+  });
+  existing.forEach(function (t) { ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('runMatchesioSync').timeBased().everyHours(1).create();
+  Logger.log('Installed hourly matchesio sync trigger.');
+}
