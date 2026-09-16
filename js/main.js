@@ -163,10 +163,20 @@ window.prBoot = async function(){
   root.innerHTML = `<div class="pr-center-screen"><div class="pr-boot-screen">
     <img src="logo.png" alt="" class="pr-logo pr-logo-lg">
     <div class="pr-loader"><span></span><span></span><span></span></div>
+    <div class="pr-hint" id="pr-boot-status" style="margin-top:14px;min-height:16px;text-align:center"></div>
   </div></div>`;
   injectDatalist();
   if(API_URL.indexOf('PASTE_YOUR') === 0){ state.storageHealthy = false; render(); return; }
-  await loadAll();
+  // The backend's response time is inconsistent (anywhere from ~2s to 50+s) —
+  // loadAll retries a few times on its own before giving up, so a slow first
+  // attempt recovers automatically instead of dead-ending on the error screen.
+  // This callback just keeps the boot screen from looking frozen while it does.
+  await loadAll((attempt, total) => {
+    if(attempt > 1){
+      const el = document.getElementById('pr-boot-status');
+      if(el) el.textContent = t('bootRetrying', { attempt: toAr(attempt), total: toAr(total) });
+    }
+  });
   if(!state.storageHealthy){ render(); return; }
   const saved = loadSession();
   if(saved){

@@ -38,31 +38,49 @@ async function postWithRetry_(body, attempts){
   return null;
 }
 
-export async function sGetAll(){
-  try {
-    const res = await fetchWithTimeout(API_URL + '?key=all');
-    const data = await res.json();
-    if(!data || data.value == null){
-      // A backend that doesn't understand ?key=all yet returns {value:null}, same as
-      // "key not found" — that's a stale/mismatched deploy, not an empty store. Treat it
-      // as a failed connection rather than falling through to "no config, write defaults",
-      // which would silently overwrite a real config with placeholder values.
-      state.lastStorageError = 'الباك إند القديم — أعد نشر Apps Script';
-      return { ok: false };
+// Same reasoning as postWithRetry_, but even simpler to justify: this is a pure
+// read, so replaying it on failure has zero side effects. onAttempt (optional)
+// lets the caller show "still trying" progress instead of one long silent wait —
+// the backend has measured response times anywhere from ~2s to 50+s, so a single
+// timed-out attempt used to mean an immediate dead-end error screen for what was
+// often just a slow moment that a second try would clear.
+async function getWithRetry_(url, attempts, onAttempt){
+  attempts = attempts || 3;
+  let lastErr = null;
+  for(let i = 0; i < attempts; i++){
+    if(onAttempt) onAttempt(i + 1, attempts);
+    try {
+      const res = await fetchWithTimeout(url, {}, 25000);
+      return await res.json();
+    } catch(e){
+      lastErr = e;
+      if(i < attempts - 1) await new Promise(r => setTimeout(r, 1500 * (i + 1)));
     }
-    const all = data.value;
-    return {
-      ok: true,
-      config: all.config ? JSON.parse(all.config) : null,
-      players: all.players ? JSON.parse(all.players) : null,
-      rounds: all.rounds ? JSON.parse(all.rounds) : null,
-      predictions: all.predictions ? JSON.parse(all.predictions) : null,
-      hanka: all.hanka ? JSON.parse(all.hanka) : null
-    };
-  } catch(e){
-    state.lastStorageError = friendlyNetworkError_(e);
+  }
+  state.lastStorageError = friendlyNetworkError_(lastErr);
+  return null;
+}
+
+export async function sGetAll(onAttempt){
+  const data = await getWithRetry_(API_URL + '?key=all', 3, onAttempt);
+  if(!data || data.value == null){
+    // A backend that doesn't understand ?key=all yet returns {value:null}, same as
+    // "key not found" — that's a stale/mismatched deploy, not an empty store. Treat it
+    // as a failed connection rather than falling through to "no config, write defaults",
+    // which would silently overwrite a real config with placeholder values. If `data`
+    // itself is null, getWithRetry_ already set a network-failure message; don't stomp it.
+    if(data) state.lastStorageError = 'الباك إند القديم — أعد نشر Apps Script';
     return { ok: false };
   }
+  const all = data.value;
+  return {
+    ok: true,
+    config: all.config ? JSON.parse(all.config) : null,
+    players: all.players ? JSON.parse(all.players) : null,
+    rounds: all.rounds ? JSON.parse(all.rounds) : null,
+    predictions: all.predictions ? JSON.parse(all.predictions) : null,
+    hanka: all.hanka ? JSON.parse(all.hanka) : null
+  };
 }
 export async function sSet(key, value){
   const data = await postWithRetry_({ key, value: JSON.stringify(value) });
@@ -182,9 +200,9 @@ export async function changeAdminPin(currentPin, newPin){
   }
 }
 
-export async function loadAll(){
+export async function loadAll(onAttempt){
   try{
-    const all = await sGetAll();
+    const all = await sGetAll(onAttempt);
     if(!all.ok){ state.storageHealthy = false; return; }
     state.storageHealthy = true;
     state.config = all.config || { title: FIXED_TITLE, adminPin: FIXED_ADMIN_PIN, pointsExact: 3, pointsWinner: 1 };
