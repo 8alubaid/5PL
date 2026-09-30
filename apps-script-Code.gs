@@ -22,6 +22,43 @@ function stripAdminPin_(rawValue) {
   }
 }
 
+// 'predictions' and 'rounds' used to each live in a single KV cell holding one big
+// JSON blob for literally everyone/every round. That has a hard ceiling — Google
+// Sheets caps a single cell at 50,000 characters — and 'predictions' (one player's
+// picks for one round × every round × every player, all in one string) hit that
+// wall exactly: every write silently failed once the cell was full, which is why
+// predictions stopped saving. Both are now sharded — one row per player
+// ('predictions_<playerId>') and one row per round ('round_<id>') — so each row
+// only has to hold one player's or one round's worth of data, however long the
+// season runs. doGet still answers '?key=predictions' and '?key=rounds' (and
+// folds both into '?key=all') exactly as before by reassembling the shards, so
+// nothing on the frontend has to change.
+function predictionRowKey_(playerId) { return 'predictions_' + playerId; }
+function roundRowKey_(roundId) { return 'round_' + roundId; }
+
+function readShardedPredictions_(data) {
+  var byPlayer = {};
+  for (var i = 1; i < data.length; i++) {
+    var k = String(data[i][0]);
+    if (k.indexOf('predictions_') === 0) {
+      var playerId = k.substring('predictions_'.length);
+      try { byPlayer[playerId] = JSON.parse(data[i][1]); } catch (err) { /* skip a corrupt row rather than fail the whole read */ }
+    }
+  }
+  return byPlayer;
+}
+
+function readShardedRounds_(data) {
+  var rounds = [];
+  for (var i = 1; i < data.length; i++) {
+    var k = String(data[i][0]);
+    if (k.indexOf('round_') === 0) {
+      try { rounds.push(JSON.parse(data[i][1])); } catch (err) { /* skip a corrupt row */ }
+    }
+  }
+  return rounds;
+}
+
 function doGet(e) {
   var key = e.parameter.key;
   var sheet = getSheet_();
@@ -33,9 +70,23 @@ function doGet(e) {
       var k = data[i][0];
       var v = data[i][1];
       if (k === 'config') v = stripAdminPin_(v);
+      // Sharded rows are assembled below, not echoed as individual raw keys.
+      if (String(k).indexOf('predictions_') === 0 || String(k).indexOf('round_') === 0) continue;
       all[k] = v;
     }
+    all.predictions = JSON.stringify(readShardedPredictions_(data));
+    all.rounds = JSON.stringify(readShardedRounds_(data));
     return ContentService.createTextOutput(JSON.stringify({ value: all }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (key === 'predictions') {
+    return ContentService.createTextOutput(JSON.stringify({ value: JSON.stringify(readShardedPredictions_(data)) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (key === 'rounds') {
+    return ContentService.createTextOutput(JSON.stringify({ value: JSON.stringify(readShardedRounds_(data)) }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
@@ -186,22 +237,19 @@ function savePrediction_(playerId, matchPredictions) {
   try {
     var sheet = getSheet_();
     var data = sheet.getDataRange().getValues();
+    var rowKey = predictionRowKey_(playerId);
     for (var i = 1; i < data.length; i++) {
-      if (data[i][0] === 'predictions') {
-        var all = {};
-        try { all = JSON.parse(data[i][1]) || {}; } catch (err) { all = {}; }
-        var mine = all[playerId] || {};
+      if (data[i][0] === rowKey) {
+        var mine = {};
+        try { mine = JSON.parse(data[i][1]) || {}; } catch (err) { mine = {}; }
         for (var matchId in matchPredictions) {
           mine[matchId] = matchPredictions[matchId];
         }
-        all[playerId] = mine;
-        sheet.getRange(i + 1, 2).setValue(JSON.stringify(all));
+        sheet.getRange(i + 1, 2).setValue(JSON.stringify(mine));
         return { ok: true };
       }
     }
-    var fresh = {};
-    fresh[playerId] = matchPredictions;
-    sheet.appendRow(['predictions', JSON.stringify(fresh)]);
+    sheet.appendRow([rowKey, JSON.stringify(matchPredictions)]);
     return { ok: true };
   } finally {
     lock.releaseLock();
@@ -256,6 +304,18 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({ ok: false, reason: 'unknown_request' }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+
+  // The frontend still calls sSet('rounds', wholeArray) exactly like before — this
+  // just shards that array across per-round rows on the way in, for the same reason
+  // savePrediction_ shards by player: one growing shared blob for the whole season
+  // was headed for the same 50,000-character cell limit that already broke
+  // 'predictions' (~1,630 chars/round × 34 rounds ≈ 55,000, past the ceiling).
+  if (key === 'rounds') {
+    var saveRoundsResult = saveRounds_(value);
+    return ContentService.createTextOutput(JSON.stringify(saveRoundsResult))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   var sheet = getSheet_();
   var data = sheet.getDataRange().getValues();
   var found = false;
@@ -271,6 +331,99 @@ function doPost(e) {
   }
   return ContentService.createTextOutput(JSON.stringify({ ok: true }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function saveRounds_(roundsJson) {
+  var roundsArr;
+  try { roundsArr = JSON.parse(roundsJson) || []; } catch (err) { return { ok: false, reason: 'bad_json' }; }
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet = getSheet_();
+    var data = sheet.getDataRange().getValues();
+    var rowByRoundId = {};
+    for (var i = 1; i < data.length; i++) {
+      var k = String(data[i][0]);
+      if (k.indexOf('round_') === 0) rowByRoundId[k.substring('round_'.length)] = i;
+    }
+    var seenIds = {};
+    for (var j = 0; j < roundsArr.length; j++) {
+      var rnd = roundsArr[j];
+      seenIds[rnd.id] = true;
+      var rowIdx = rowByRoundId[rnd.id];
+      if (rowIdx != null) {
+        sheet.getRange(rowIdx + 1, 2).setValue(JSON.stringify(rnd));
+      } else {
+        sheet.appendRow([roundRowKey_(rnd.id), JSON.stringify(rnd)]);
+      }
+    }
+    // A round_<id> row whose id is no longer in the incoming array was deleted
+    // (prDeleteRound) — blank it out rather than leaving stale data behind.
+    for (var id in rowByRoundId) {
+      if (!seenIds[id]) sheet.getRange(rowByRoundId[id] + 1, 1, 1, 2).clearContent();
+    }
+    return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * تشغيلها مرة وحدة فقط — تفكّك الخليتين القديمتين الكبيرتين (predictions و rounds)
+ * إلى صف مستقل لكل لاعب/جولة. تكتب البيانات الجديدة بس ما تمسح القديمة أبدًا — تضل
+ * موجودة بس محد يقرأها بعد كذا (الكود الجديد يبني predictions/rounds من الصفوف
+ * المجزّأة فقط ويتجاهل الخليتين القديمتين تمامًا). السبب: بين ما تشغّل هذي الدالة
+ * وبين ما تسوي Deploy لنسخة جديدة فعليًا يطلع منها رابط /exec، الكود القديم المنشور
+ * لسا شغال — ولو مسحنا القديم قبل ما الكود الجديد يطلع فعليًا، أي لاعب يفتح الموقع
+ * بهذي الفترة بيشوف الموقع فاضي تمامًا. تركها زي ما هي يخلي الكود القديم يشتغل عادي
+ * لين تسوي Deploy، وبعدها الكود الجديد يتجاهلها بنفسه — آمنة مئة بالمئة بدون أي فجوة.
+ * آمنة التكرار أيضًا: أي صف انكتب قبل كذا يتجاهله ثاني مرة، ما يكرره.
+ */
+function migrateToShardedStorage() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sheet = getSheet_();
+    var data = sheet.getDataRange().getValues();
+    var oldPredictions = {}, oldRounds = [];
+    var existingShardKeys = {};
+    for (var i = 1; i < data.length; i++) {
+      var k = String(data[i][0]);
+      if (k === 'predictions') { try { oldPredictions = JSON.parse(data[i][1]) || {}; } catch (e) { oldPredictions = {}; } }
+      else if (k === 'rounds') { try { oldRounds = JSON.parse(data[i][1]) || []; } catch (e) { oldRounds = []; } }
+      else if (k.indexOf('predictions_') === 0 || k.indexOf('round_') === 0) { existingShardKeys[k] = true; }
+    }
+
+    var playerIds = Object.keys(oldPredictions);
+    var playersWritten = 0, playersSkipped = 0;
+    playerIds.forEach(function (playerId) {
+      var rowKey = predictionRowKey_(playerId);
+      if (existingShardKeys[rowKey]) { playersSkipped++; return; }
+      sheet.appendRow([rowKey, JSON.stringify(oldPredictions[playerId])]);
+      playersWritten++;
+    });
+
+    var roundsWritten = 0, roundsSkipped = 0;
+    oldRounds.forEach(function (rnd) {
+      var rowKey = roundRowKey_(rnd.id);
+      if (existingShardKeys[rowKey]) { roundsSkipped++; return; }
+      sheet.appendRow([rowKey, JSON.stringify(rnd)]);
+      roundsWritten++;
+    });
+
+    var summary = {
+      playersFoundInOldBlob: playerIds.length,
+      playersWrittenThisRun: playersWritten,
+      playersAlreadyShardedFromBefore: playersSkipped,
+      roundsFoundInOldBlob: oldRounds.length,
+      roundsWrittenThisRun: roundsWritten,
+      roundsAlreadyShardedFromBefore: roundsSkipped
+    };
+    Logger.log(JSON.stringify(summary, null, 2));
+    return summary;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /**
