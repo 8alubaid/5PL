@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { t } from './i18n.js';
 import { esc, prToast } from './utils.js';
 import { toAr, toWest, roundDisplayName } from './i18n.js';
-import { teamName, teamPairHTML, teamBadgeHTML, drawBadgeHTML, stadiumName, playerAvatarHTML, iconHTML, postponedNoteHTML, postponedDayText } from './data.js';
+import { teamName, teamPairHTML, teamBadgeHTML, drawBadgeHTML, stadiumName, playerAvatarHTML, iconHTML, postponedNoteHTML, postponedPillHTML } from './data.js';
 import { calcRoundScore, matchOutcome, findOpenRoundId, fmtDT, isMatchPredictable, isMatchStarted, countdownParts } from './scoring.js';
 import { savePrediction } from './api.js';
 import { render } from './main.js';
@@ -31,14 +31,11 @@ function outcomeLabel(side, m){
   return side === 'home' ? esc(teamName(m.home)) : esc(teamName(m.away));
 }
 
-// A postponed game with no new date yet has nothing to put where the kickoff time
-// normally goes — fmtDT would print a bare dash — the postponed note says it instead.
-// One whose new day is known but not its time shows the day only.
-const kickoffText = m => {
-  if(m.postponed && !m.kickoff) return '';
-  const day = postponedDayText(m);
-  return day ? `${day} · ${t('timeNotSetYet')}` : fmtDT(m.kickoff);
-};
+// What sits beside a match's teams: its kickoff — or, for a postponed game that
+// hasn't been played yet, a badge saying it's postponed, with its new date.
+const matchWhenHTML = m => (m.postponed && !m.finished)
+  ? postponedPillHTML(m)
+  : `<span class="pr-match-time">${fmtDT(m.kickoff)}</span>`;
 
 // Only one match per round can carry the exact-score bonus. Matches close
 // independently now, so a player can save an exact pick on an early match,
@@ -82,7 +79,7 @@ function renderRevealedRow(m){
   return `<div style="padding:12px 6px;border-bottom:1px dashed rgba(255,255,255,0.08)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
       <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
-      <span class="pr-match-time">${m.finished ? t('resultPrefix')+realTxt : kickoffText(m)}</span>
+      ${m.finished ? `<span class="pr-match-time">${t('resultPrefix')}${realTxt}</span>` : matchWhenHTML(m)}
     </div>
     ${m.stadium ? `<div class="pr-hint" style="margin:-4px 0 8px">${esc(stadiumName(m.stadium))}</div>` : ''}
     <div>${allPicks || `<span class="pr-hint">${t('noOneYet')}</span>`}</div>
@@ -93,7 +90,7 @@ function renderPendingRow(m){
   return `<div style="padding:12px 6px;border-bottom:1px dashed rgba(255,255,255,0.08)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
       <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
-      <span class="pr-match-time">${kickoffText(m)}</span>
+      ${matchWhenHTML(m)}
     </div>
     ${m.stadium ? `<div class="pr-hint" style="margin:-2px 0 6px">${esc(stadiumName(m.stadium))}</div>` : ''}
     ${postponedNoteHTML(m)}
@@ -136,7 +133,7 @@ function renderSummaryRow(m){
   return `<div style="padding:12px 6px;border-bottom:1px dashed rgba(255,255,255,0.08)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
       <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
-      <span class="pr-match-time">${kickoffText(m)}</span>
+      ${matchWhenHTML(m)}
     </div>
     ${m.stadium ? `<div class="pr-hint" style="margin:-2px 0 6px">${esc(stadiumName(m.stadium))}</div>` : ''}
     ${postponedNoteHTML(m)}
@@ -152,7 +149,7 @@ function renderPredictRow(m, exactLocked){
   <div class="pr-match-predict">
     <div class="pr-flex-between" style="margin-bottom:8px">
       <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
-      <span class="pr-match-time">${kickoffText(m)}</span>
+      ${matchWhenHTML(m)}
     </div>
     ${m.stadium ? `<div class="pr-hint" style="margin:-4px 0 8px">${esc(stadiumName(m.stadium))}</div>` : ''}
     ${postponedNoteHTML(m)}

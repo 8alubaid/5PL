@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { t, toAr, roundDisplayName } from './i18n.js';
-import { teamPairHTML, stadiumName, teamName, iconHTML } from './data.js';
+import { teamPairHTML, stadiumName, teamName, iconHTML, postponedWhenText } from './data.js';
 import { esc } from './utils.js';
 import { calcRoundScore, matchOutcome, isMatchPredictable } from './scoring.js';
 import { loadAll } from './api.js';
@@ -77,7 +77,7 @@ export function renderHistoryTab(){
     const rows = rnd.matches.map(m => {
       const pred = myPreds[m.id];
       const real = m.finished ? matchOutcome(m) : null;
-      const realTxt = m.finished ? `${toAr(m.homeScore)} - ${toAr(m.awayScore)}` : (m.postponed ? t('postponedLabel') : t('notFinished'));
+      const realTxt = m.finished ? `${toAr(m.homeScore)} - ${toAr(m.awayScore)}` : (m.postponed ? `${t('postponedLabel')} · ${postponedWhenText(m)}` : t('notFinished'));
       const predTxt = pred && pred.outcome ? outcomeLabel(pred.outcome, m) : t('noPrediction');
       const correct = m.finished && pred && pred.outcome === real;
       const exactTxt = pred && pred.exact ? ` ${iconHTML('target')} ${toAr(pred.exact.home)}-${toAr(pred.exact.away)}` : '';

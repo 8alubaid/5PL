@@ -54,6 +54,7 @@ export const I18N = {
   postponedNoteNewDate: { ar:'هذي المباراة تأجلت وانحدد لها موعد جديد. تقدر تتوقعها لين تبدأ.', en:'This match was postponed and has a new date. You can still predict it until it starts.' },
   postponedNoteDateNoTime: { ar:'هذي المباراة تأجلت إلى {date}، ووقتها بالضبط لسا ما انحدد. تقدر تتوقعها لين تبدأ.', en:'This match was postponed to {date}; the exact kickoff time isn\'t set yet. You can still predict it until it starts.' },
   timeNotSetYet: { ar:'الوقت لسا ما انحدد', en:'time not set yet' },
+  newDateNotSet: { ar:'الموعد الجديد لسا ما انحدد', en:'new date not set yet' },
   predictOpenLabel: { ar:'مفتوحة للتوقع', en:'Open for predictions' },
   editPredictions: { ar:'تعديل توقعاتي', en:'Edit My Predictions' },
   savedPredictionsTitle: { ar:'توقعاتك محفوظة', en:'Your predictions are saved' },

@@ -349,6 +349,11 @@ html[dir="rtl"] #predictor-root .pr-chev { transform: scaleX(-1); }
   background: rgba(240,194,94,0.12); border: 1px solid rgba(240,194,94,0.38); color: var(--gold-bright);
 }
 .pr-postponed-note b { font-weight: 800; }
+.pr-postponed-pill {
+  display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px;
+  font-size:11.5px; font-weight:700; line-height:1.5; white-space:nowrap;
+  background: rgba(240,194,94,0.16); border:1px solid rgba(240,194,94,0.45); color: var(--gold-bright);
+}
 .pr-tag { font-size:11px; padding:2px 8px; border-radius:999px; font-weight:400; }
 .pr-tag.postponed { background: rgba(240,194,94,0.2); color: var(--gold-bright); }
 .pr-tag.open { background: rgba(53,199,120,0.2); color: var(--green-bright); }

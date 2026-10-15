@@ -149,6 +149,23 @@ export function postponedDayText(m){
     { calendar: 'gregory', timeZone: 'Asia/Riyadh', day: 'numeric', month: 'long', year: sameYear ? undefined : 'numeric' }));
 }
 
+// The short "when" for a postponed game: its new day (time not announced), its new
+// kickoff, or that there's no new date yet.
+export function postponedWhenText(m){
+  if(!m.kickoff) return t('newDateNotSet');
+  const day = postponedDayText(m);
+  if(day) return day;
+  return toAr(new Date(m.kickoff).toLocaleString(state.lang === 'en' ? 'en-US' : 'ar-SA',
+    { calendar: 'gregory', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }));
+}
+
+// Badge right beside a postponed game's teams — "Postponed · <new date>" — so it's
+// obvious at a glance, before reading anything else on the row.
+export function postponedPillHTML(m){
+  if(!m || !m.postponed || m.finished) return '';
+  return `<span class="pr-postponed-pill">${iconHTML('warning')} ${t('postponedLabel')} · ${postponedWhenText(m)}</span>`;
+}
+
 export function drawBadgeHTML(extraClass){
   return `<span class="pr-team-badge pr-draw-badge ${extraClass||''}" style="--bc1:${DRAW_BADGE.c1};--bc2:${DRAW_BADGE.c2}">${iconHTML('scales')}</span>`;
 }
