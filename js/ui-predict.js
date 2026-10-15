@@ -211,10 +211,32 @@ function saveStatusHTML(rnd){
   return '';
 }
 
+// Round switcher: previous/next arrows around one big button showing the current
+// round. That button is a native <select> made invisible on top of the styled
+// label, so on a phone a tap opens the phone's own round picker. Replaces a row of
+// chips that had to be scrolled sideways — already 9 wide, and 34 by season's end.
+const chevronSVG = d => `<svg class="pr-chev" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const roundIsOpen = r => r.matches.some(m => isMatchPredictable(m));
+
+function renderRoundNav(rnd){
+  const idx = state.rounds.findIndex(r => r.id === rnd.id);
+  const options = state.rounds.map(r =>
+    `<option value="${r.id}" ${r.id === rnd.id ? 'selected' : ''}>${roundDisplayName(r.name)}${roundIsOpen(r) ? ' — ' + t('roundOpenTag') : ''}</option>`
+  ).join('');
+  return `<div class="pr-round-nav">
+    <button type="button" class="pr-round-step" onclick="prStepRound(-1)" ${idx <= 0 ? 'disabled' : ''} aria-label="${t('prevRound')}" title="${t('prevRound')}">${chevronSVG('M15 6l-6 6 6 6')}</button>
+    <label class="pr-round-current">
+      <span class="pr-round-current-name">${roundDisplayName(rnd.name)}<svg class="pr-round-caret" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      ${roundIsOpen(rnd) ? `<span class="pr-round-current-sub">${t('roundOpenTag')}</span>` : ''}
+      <select class="pr-round-native" onchange="prSelectRound(this.value)" aria-label="${t('chooseRound')}">${options}</select>
+    </label>
+    <button type="button" class="pr-round-step" onclick="prStepRound(1)" ${idx >= state.rounds.length - 1 ? 'disabled' : ''} aria-label="${t('nextRound')}" title="${t('nextRound')}">${chevronSVG('M9 6l6 6-6 6')}</button>
+  </div>`;
+}
+
 export function renderPredictTab(){
   if(!state.rounds.length) return `<div class="pr-card"><div class="pr-empty">${t('noRoundsYet')}</div></div>`;
   if(!state.selectedRoundId) state.selectedRoundId = findOpenRoundId();
-  const roundChips = state.rounds.map(r => `<button class="pr-round-chip ${r.id===state.selectedRoundId?'active':''}" onclick="prSelectRound('${r.id}')">${roundDisplayName(r.name)}</button>`).join('');
   const rnd = state.rounds.find(r => r.id === state.selectedRoundId) || state.rounds[0];
 
   if(!state.predictDraftRoundId || state.predictDraftRoundId !== rnd.id){ initDraft(rnd); state.predictDraftRoundId = rnd.id; }
@@ -244,7 +266,7 @@ export function renderPredictTab(){
   }
 
   return `
-    <div class="pr-round-select">${roundChips}</div>
+    ${renderRoundNav(rnd)}
     <div class="pr-card">
       <div class="pr-section-title">${t('matchesFor',{round:roundDisplayName(rnd.name)})}</div>
       <div class="pr-hint" style="margin-bottom:10px">${t('predictHint')}</div>
@@ -264,6 +286,11 @@ export function renderPredictTab(){
 }
 
 window.prSelectRound = function(id){ state.selectedRoundId = id; state.predictDraftRoundId = null; render(); };
+window.prStepRound = function(step){
+  const idx = state.rounds.findIndex(r => r.id === state.selectedRoundId);
+  const target = state.rounds[idx + step];
+  if(target) window.prSelectRound(target.id);
+};
 window.prEditPredictions = function(){ state.predictViewMode = 'edit'; render(); };
 // While a save is in flight the picks are frozen — the summary shown afterwards reads
 // from this draft, so a change made mid-save would be displayed as if it had been saved.

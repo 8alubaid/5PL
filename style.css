@@ -43,7 +43,7 @@ body { min-height: 100vh; min-height: 100dvh; }
 html[dir="ltr"] #predictor-root h1, html[dir="ltr"] #predictor-root h2, html[dir="ltr"] #predictor-root h3,
 html[dir="ltr"] #predictor-root .disp, html[dir="ltr"] #predictor-root .pr-title, html[dir="ltr"] #predictor-root .pr-title-text,
 html[dir="ltr"] #predictor-root .pr-tab, html[dir="ltr"] #predictor-root .pr-btn,
-html[dir="ltr"] #predictor-root .pr-round-chip, html[dir="ltr"] #predictor-root .pr-rank,
+html[dir="ltr"] #predictor-root .pr-round-current-name, html[dir="ltr"] #predictor-root .pr-rank,
 html[dir="ltr"] #predictor-root .pr-total, html[dir="ltr"] #predictor-root .pr-score-box input {
   font-family: 'Poppins', sans-serif;
   font-weight: 600;
@@ -313,14 +313,33 @@ img.pr-team-badge {
 .pr-total { font-family:'Cairo', sans-serif; font-weight:800; color: var(--gold-bright); font-size:15px; }
 
 .pr-empty { text-align:center; padding: 34px 10px; color: var(--text-dim); font-size:13.5px; }
-.pr-round-select { display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:14px; scrollbar-width: thin; }
-.pr-round-chip {
-  white-space:nowrap; padding:8px 18px; border-radius:999px; border:1px solid var(--card-border); background:rgba(255,255,255,0.03);
-  color:var(--text-dim); cursor:pointer; font-size:12.5px; font-weight:700; font-family:'Cairo', sans-serif;
-  transition: all .18s var(--ease);
+/* Round switcher: ‹ [ current round ▾ ] › — the middle is a native <select> laid
+   invisibly over the label, so a tap opens the phone's own picker. */
+.pr-round-nav { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.pr-round-step {
+  flex:0 0 auto; width:48px; height:52px; border-radius:14px;
+  display:inline-flex; align-items:center; justify-content:center;
+  border:1px solid var(--card-border); background:rgba(255,255,255,0.04); color:var(--gold-bright);
+  cursor:pointer; transition: all .18s var(--ease); -webkit-tap-highlight-color: transparent;
 }
-.pr-round-chip:hover { border-color: var(--gold); color: var(--text); }
-.pr-round-chip.active { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color:#22190a; border-color: var(--gold); box-shadow: var(--shadow-btn); }
+.pr-round-step:hover:not(:disabled) { border-color: var(--gold); background: var(--gold-soft); }
+.pr-round-step:active:not(:disabled) { transform: scale(0.94); }
+.pr-round-step:disabled { opacity:0.28; cursor:default; }
+html[dir="rtl"] #predictor-root .pr-chev { transform: scaleX(-1); }
+.pr-round-current {
+  position:relative; flex:1 1 auto; min-width:0; height:52px; border-radius:14px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color:#22190a;
+  box-shadow: var(--shadow-btn); cursor:pointer; overflow:hidden; -webkit-tap-highlight-color: transparent;
+}
+.pr-round-current:focus-within { outline:2px solid var(--gold-bright); outline-offset:2px; }
+.pr-round-current-name { display:inline-flex; align-items:center; gap:6px; font-family:'Cairo', sans-serif; font-weight:800; font-size:16px; line-height:1.25; }
+.pr-round-current-sub { font-size:11px; font-weight:700; line-height:1.2; opacity:0.72; }
+.pr-round-native {
+  position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer;
+  font-size:16px; border:0; -webkit-appearance:none; appearance:none;
+}
+.pr-round-native option { color:#111; background:#fff; }
 
 .pr-admin-form-row { display:flex; gap:8px; margin-bottom:8px; align-items:center; flex-wrap:wrap; }
 .pr-admin-form-row .pr-input { flex:1; min-width:110px; }
