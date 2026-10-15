@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { t } from './i18n.js';
 import { esc, prToast } from './utils.js';
 import { toAr, toWest, roundDisplayName } from './i18n.js';
-import { teamName, teamPairHTML, teamBadgeHTML, drawBadgeHTML, stadiumName, playerAvatarHTML, iconHTML } from './data.js';
+import { teamName, teamPairHTML, teamBadgeHTML, drawBadgeHTML, stadiumName, playerAvatarHTML, iconHTML, postponedNoteHTML } from './data.js';
 import { calcRoundScore, matchOutcome, findOpenRoundId, fmtDT, isMatchPredictable, isMatchStarted, countdownParts } from './scoring.js';
 import { savePrediction } from './api.js';
 import { render } from './main.js';
@@ -30,6 +30,10 @@ function outcomeLabel(side, m){
   if(side === 'draw') return t('draw');
   return side === 'home' ? esc(teamName(m.home)) : esc(teamName(m.away));
 }
+
+// A postponed game with no new date yet has nothing to put where the kickoff time
+// normally goes — fmtDT would print a bare dash — the postponed note says it instead.
+const kickoffText = m => (m.postponed && !m.kickoff) ? '' : fmtDT(m.kickoff);
 
 // Only one match per round can carry the exact-score bonus. Matches close
 // independently now, so a player can save an exact pick on an early match,
@@ -73,7 +77,7 @@ function renderRevealedRow(m){
   return `<div style="padding:12px 6px;border-bottom:1px dashed rgba(255,255,255,0.08)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
       <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
-      <span class="pr-match-time">${m.finished ? t('resultPrefix')+realTxt : fmtDT(m.kickoff)}</span>
+      <span class="pr-match-time">${m.finished ? t('resultPrefix')+realTxt : kickoffText(m)}</span>
     </div>
     ${m.stadium ? `<div class="pr-hint" style="margin:-4px 0 8px">${esc(stadiumName(m.stadium))}</div>` : ''}
     <div>${allPicks || `<span class="pr-hint">${t('noOneYet')}</span>`}</div>
@@ -84,9 +88,10 @@ function renderPendingRow(m){
   return `<div style="padding:12px 6px;border-bottom:1px dashed rgba(255,255,255,0.08)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
       <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
-      <span class="pr-match-time">${fmtDT(m.kickoff)}</span>
+      <span class="pr-match-time">${kickoffText(m)}</span>
     </div>
     ${m.stadium ? `<div class="pr-hint" style="margin:-2px 0 6px">${esc(stadiumName(m.stadium))}</div>` : ''}
+    ${postponedNoteHTML(m)}
     <div class="pr-hint">${iconHTML('lock')} ${t('predictionsNotOpenYet')}</div>
   </div>`;
 }
@@ -126,9 +131,10 @@ function renderSummaryRow(m){
   return `<div style="padding:12px 6px;border-bottom:1px dashed rgba(255,255,255,0.08)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
       <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
-      <span class="pr-match-time">${fmtDT(m.kickoff)}</span>
+      <span class="pr-match-time">${kickoffText(m)}</span>
     </div>
     ${m.stadium ? `<div class="pr-hint" style="margin:-2px 0 6px">${esc(stadiumName(m.stadium))}</div>` : ''}
+    ${postponedNoteHTML(m)}
     <div class="pr-hint">${iconHTML('check-circle')} ${t('yourPredictionPrefix')}<b style="color:var(--text)">${txt}</b></div>
     ${renderCountdown(m)}
   </div>`;
@@ -141,9 +147,10 @@ function renderPredictRow(m, exactLocked){
   <div class="pr-match-predict">
     <div class="pr-flex-between" style="margin-bottom:8px">
       <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
-      <span class="pr-match-time">${fmtDT(m.kickoff)}</span>
+      <span class="pr-match-time">${kickoffText(m)}</span>
     </div>
     ${m.stadium ? `<div class="pr-hint" style="margin:-4px 0 8px">${esc(stadiumName(m.stadium))}</div>` : ''}
+    ${postponedNoteHTML(m)}
     ${renderCountdown(m)}
     <div class="pr-outcome-row" style="margin-top:10px">
       ${btn('home', teamBadgeHTML(m.home,'pr-team-badge-lg'), esc(teamName(m.home)))}

@@ -62,7 +62,7 @@ export function renderAdminRounds(){
       <div class="pr-match" style="flex-wrap:wrap">
         <div style="flex:1;min-width:150px">
           <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
-          <div class="pr-match-time">${fmtDT(m.kickoff)} — <span class="pr-tag ${m.finished?'closed':'open'}">${m.finished?t('finished'):t('resultPending')}</span></div>
+          <div class="pr-match-time">${fmtDT(m.kickoff)} — <span class="pr-tag ${m.finished?'closed':(m.postponed?'postponed':'open')}">${m.finished?t('finished'):(m.postponed?t('postponedLabel'):t('resultPending'))}</span></div>
           ${m.stadium ? `<div class="pr-match-time">${esc(stadiumName(m.stadium))}</div>` : ''}
           <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12.5px;color:var(--text-dim)">
             <input type="checkbox" ${predictOpen?'checked':''} onchange="prToggleMatchPredictOpen('${rnd.id}','${m.id}',this.checked)">

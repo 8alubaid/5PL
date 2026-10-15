@@ -127,6 +127,14 @@ export function iconHTML(name, extraClass, extraStyle){
   return `<span class="pr-icon ${extraClass||''}" style="--icon-url:url('img/icons/${name}.svg');${extraStyle||''}" aria-hidden="true"></span>`;
 }
 
+// Tells players a game was postponed. Shown only while the game still has no
+// result — once it's played the note has nothing left to say. A postponed game
+// stays open for predictions until it actually starts, so the note says so.
+export function postponedNoteHTML(m){
+  if(!m || !m.postponed || m.finished) return '';
+  return `<div class="pr-postponed-note">${iconHTML('warning')} <b>${t('postponedLabel')}</b> — ${t(m.kickoff ? 'postponedNoteNewDate' : 'postponedNoteNoDate')}</div>`;
+}
+
 export function drawBadgeHTML(extraClass){
   return `<span class="pr-team-badge pr-draw-badge ${extraClass||''}" style="--bc1:${DRAW_BADGE.c1};--bc2:${DRAW_BADGE.c2}">${iconHTML('scales')}</span>`;
 }
