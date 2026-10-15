@@ -505,17 +505,20 @@ function syncFromMatchesio_() {
       return result;
     }
 
+    // Rounds live one per row ('round_<id>', see saveRounds_), not in a single
+    // 'rounds' cell. This function used to read and write that old cell — which
+    // nothing reads since the storage change — so scores and new rounds were
+    // landing in a dead copy and never reaching the site. Each row's position is
+    // kept so a changed round can be rewritten in place.
     var sheet = getSheet_();
     var data = sheet.getDataRange().getValues();
-    var roundsRowIndex = -1, rounds = [];
+    var entries = [];
     for (var i = 1; i < data.length; i++) {
-      if (data[i][0] === 'rounds') {
-        roundsRowIndex = i;
-        try { rounds = JSON.parse(data[i][1]) || []; } catch (e) { rounds = []; }
-        break;
-      }
+      if (String(data[i][0]).indexOf('round_') !== 0) continue;
+      try { entries.push({ rowIndex: i, round: JSON.parse(data[i][1]), dirty: false }); } catch (e) { /* skip a corrupt row */ }
     }
-    if (roundsRowIndex === -1) { result.error = 'no rounds key yet'; return result; }
+    if (!entries.length) { result.error = 'no rounds yet'; return result; }
+    var rounds = entries.map(function (en) { return en.round; });
 
     // فهرسة مباريات matchesio حسب "رقم الجولة|الفريق المضيف|الفريق الضيف" عشان
     // نستخدمها بتحديث النتائج، وحسب رقم الجولة لوحده عشان نجيب جولة كاملة جديدة.
@@ -529,7 +532,8 @@ function syncFromMatchesio_() {
     });
 
     // ١) عبّي نتيجة أي مباراة صارت "Played" في matchesio وعندنا لسه ناقصة أو غلط.
-    rounds.forEach(function (rnd) {
+    entries.forEach(function (en) {
+      var rnd = en.round;
       var md = roundMatchday_(rnd.name);
       if (md == null) return;
       rnd.matches.forEach(function (m) {
@@ -540,6 +544,7 @@ function syncFromMatchesio_() {
         var hs = Number(rm[1]), as = Number(rm[2]);
         if (m.finished && m.homeScore === hs && m.awayScore === as) return; // متطابقة أصلًا
         m.homeScore = hs; m.awayScore = as; m.finished = true;
+        en.dirty = true;
         result.scoresUpdated++;
         result.changed = true;
       });
@@ -553,8 +558,17 @@ function syncFromMatchesio_() {
     });
     if (maxMd != null) {
       var currentRound = rounds.filter(function (r) { return roundMatchday_(r.name) === maxMd; })[0];
-      var currentFullyFinished = currentRound && currentRound.matches.length > 0 &&
-        currentRound.matches.every(function (m) { return m.finished; });
+      // A match matchesio lists as Postponed/Cancelled isn't going to be played with
+      // the rest of its round, so it must not hold the next round hostage — one
+      // postponed game would otherwise keep a whole round off the site (and players
+      // from predicting it). Everything else still has to be finished.
+      var finishedCount = 0, allSettled = true;
+      currentRound.matches.forEach(function (m) {
+        if (m.finished) { finishedCount++; return; }
+        var cf = byKey[maxMd + '|' + m.home + '|' + m.away];
+        if (!(cf && (cf.status === 'Postponed' || cf.status === 'Cancelled'))) allSettled = false;
+      });
+      var currentFullyFinished = currentRound.matches.length > 0 && finishedCount > 0 && allSettled;
       var nextMd = maxMd + 1;
       var nextAlreadyExists = rounds.some(function (r) { return roundMatchday_(r.name) === nextMd; });
       var nextFixtures = byMatchday[nextMd] || [];
@@ -575,7 +589,8 @@ function syncFromMatchesio_() {
                 homeScore: null, awayScore: null, finished: false
               };
             });
-          rounds.push({ id: uid_('rd'), name: 'الجولة ' + nextMd, matches: newMatches });
+          var newRound = { id: uid_('rd'), name: 'الجولة ' + nextMd, matches: newMatches };
+          sheet.appendRow([roundRowKey_(newRound.id), JSON.stringify(newRound)]);
           result.roundImported = nextMd;
           result.changed = true;
         } else {
@@ -584,9 +599,9 @@ function syncFromMatchesio_() {
       }
     }
 
-    if (result.changed) {
-      sheet.getRange(roundsRowIndex + 1, 2).setValue(JSON.stringify(rounds));
-    }
+    entries.forEach(function (en) {
+      if (en.dirty) sheet.getRange(en.rowIndex + 1, 2).setValue(JSON.stringify(en.round));
+    });
     return result;
   } finally {
     lock.releaseLock();
