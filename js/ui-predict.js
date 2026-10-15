@@ -221,18 +221,29 @@ function saveStatusHTML(rnd){
 // label, so on a phone a tap opens the phone's own round picker. Replaces a row of
 // chips that had to be scrolled sideways — already 9 wide, and 34 by season's end.
 const chevronSVG = d => `<svg class="pr-chev" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const roundIsOpen = r => r.matches.some(m => isMatchPredictable(m));
+// Says how many games are still open rather than calling the round "open" — a
+// round where only a postponed game is left must not look like every pick in it
+// can still be changed. Arabic counts take different noun forms by number.
+function openMatchesLabel(r){
+  const n = r.matches.filter(m => isMatchPredictable(m)).length;
+  if(!n) return '';
+  if(n === 1) return t('openMatchesOne');
+  if(n === 2) return t('openMatchesTwo');
+  return t(n <= 10 ? 'openMatchesFew' : 'openMatchesMany', { n: toAr(n) });
+}
 
 function renderRoundNav(rnd){
   const idx = state.rounds.findIndex(r => r.id === rnd.id);
-  const options = state.rounds.map(r =>
-    `<option value="${r.id}" ${r.id === rnd.id ? 'selected' : ''}>${roundDisplayName(r.name)}${roundIsOpen(r) ? ' — ' + t('roundOpenTag') : ''}</option>`
-  ).join('');
+  const options = state.rounds.map(r => {
+    const open = openMatchesLabel(r);
+    return `<option value="${r.id}" ${r.id === rnd.id ? 'selected' : ''}>${roundDisplayName(r.name)}${open ? ' — ' + open : ''}</option>`;
+  }).join('');
+  const currentOpen = openMatchesLabel(rnd);
   return `<div class="pr-round-nav">
     <button type="button" class="pr-round-step" onclick="prStepRound(-1)" ${idx <= 0 ? 'disabled' : ''} aria-label="${t('prevRound')}" title="${t('prevRound')}">${chevronSVG('M15 6l-6 6 6 6')}</button>
     <label class="pr-round-current">
       <span class="pr-round-current-name">${roundDisplayName(rnd.name)}<svg class="pr-round-caret" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-      ${roundIsOpen(rnd) ? `<span class="pr-round-current-sub">${t('roundOpenTag')}</span>` : ''}
+      ${currentOpen ? `<span class="pr-round-current-sub">${currentOpen}</span>` : ''}
       <select class="pr-round-native" onchange="prSelectRound(this.value)" aria-label="${t('chooseRound')}">${options}</select>
     </label>
     <button type="button" class="pr-round-step" onclick="prStepRound(1)" ${idx >= state.rounds.length - 1 ? 'disabled' : ''} aria-label="${t('nextRound')}" title="${t('nextRound')}">${chevronSVG('M9 6l6 6-6 6')}</button>
