@@ -92,24 +92,73 @@ export async function verifyAdminPin(pin){
   return !!(data && data.ok);
 }
 
-// A prediction can't be redone once its match kicks off, so this gets a stronger
-// guarantee than a plain retry: after the backend reports success, re-read the
-// sheet and only report success once the exact picks we sent are actually there.
-// That covers the gap retries alone can't — a request that times out on our end
-// but still lands on the server moments later, or a response that got lost.
-export async function savePrediction(playerId, matchPredictions){
-  const data = await postWithRetry_({ action: 'savePrediction', playerId, matchPredictions });
-  if(!data || !data.ok) return false;
-  return await verifyPredictionSaved_(playerId, matchPredictions);
+const sleep_ = ms => new Promise(r => setTimeout(r, ms));
+
+// One POST attempt: the parsed reply, or null when there was no usable answer
+// (timeout, dropped connection, an error page instead of JSON).
+async function postOnce_(body, ms){
+  try {
+    const res = await fetchWithTimeout(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    }, ms);
+    return await res.json();
+  } catch(e){
+    state.lastStorageError = friendlyNetworkError_(e);
+    return null;
+  }
 }
 
-async function verifyPredictionSaved_(playerId, matchPredictions){
+// Saves something a player can't easily redo, and never reports a failure it can't
+// back up. The backend's response time swings from ~2s to 20s+, and a request that
+// times out on OUR side has very often still gone through — so after every attempt,
+// answered or not, the saved data is read back before anything is called a failure.
+// Sending again is always safe: every save here merges by id or replaces outright.
+//
+// Resolves to one of:
+//   saved   — the read-back shows it, or the backend said ok and a read-back wasn't possible
+//   refused — the backend gave a definite "no" with a reason (e.g. حنكة is locked)
+//   failed  — the read-back worked and the data really isn't there
+//   unknown — nothing could be confirmed either way; the save may well have gone through
+// readBack(ms) must resolve true / false / null (null = couldn't read).
+async function saveAndConfirm_(body, readBack, opts){
+  const o = Object.assign({ budgetMs: 70000, postMs: 30000, readMs: 20000, minStartMs: 15000, pauseMs: 2000, floorMs: 5000 }, opts || {});
+  const deadline = Date.now() + o.budgetMs;
+  const slice = cap => Math.min(cap, Math.max(o.floorMs, deadline - Date.now()));
+  let acked = false, lastRead = null, attempts = 0;
+  while(attempts === 0 || deadline - Date.now() >= o.minStartMs){
+    attempts++;
+    const reply = await postOnce_(body, slice(o.postMs));
+    if(reply && reply.ok === false && reply.reason) return { status: 'refused', reply };
+    if(reply && reply.ok) acked = true;
+    lastRead = await readBack(slice(o.readMs));
+    if(lastRead === true) return { status: 'saved' };
+    if(acked && lastRead === null) return { status: 'saved' };
+    if(deadline - Date.now() >= o.minStartMs) await sleep_(o.pauseMs);
+  }
+  if(!acked && lastRead === false) return { status: 'failed' };
+  return { status: 'unknown' };
+}
+
+// Resolves to 'saved' | 'failed' | 'unknown' (see saveAndConfirm_) — not a yes/no,
+// because "we couldn't tell" is a real and common answer on a slow connection and
+// telling someone "error" when the pick actually saved just sends them round in
+// circles. `opts` only exists so tests can shrink the timeouts.
+export async function savePrediction(playerId, matchPredictions, opts){
+  const r = await saveAndConfirm_({ action: 'savePrediction', playerId, matchPredictions },
+    ms => readBackPredictions_(playerId, matchPredictions, ms), opts);
+  return r.status === 'refused' ? 'failed' : r.status;
+}
+
+// true = every pick is there exactly as sent, false = the read worked and it isn't,
+// null = the read itself didn't complete, so nothing can be said.
+async function readBackPredictions_(playerId, matchPredictions, ms){
   try {
-    const res = await fetchWithTimeout(API_URL + '?key=predictions');
+    const res = await fetchWithTimeout(API_URL + '?key=predictions&cb=' + Date.now(), {}, ms);
     const data = await res.json();
-    if(!data || data.value == null) return false;
-    const all = JSON.parse(data.value);
-    const mine = all[playerId] || {};
+    if(!data || data.value == null) return null;
+    const mine = JSON.parse(data.value)[playerId] || {};
     return Object.keys(matchPredictions).every(matchId => {
       const want = matchPredictions[matchId];
       const got = mine[matchId];
@@ -119,7 +168,7 @@ async function verifyPredictionSaved_(playerId, matchPredictions){
       return Number(got.exact.home) === Number(want.exact.home) && Number(got.exact.away) === Number(want.exact.away);
     });
   } catch(e){
-    return false; // couldn't confirm — report it as unsaved rather than assume it's fine
+    return null;
   }
 }
 
@@ -156,20 +205,22 @@ export async function setPlayerAvatar(playerId, avatarTeam){
 }
 
 // Same reasoning as savePrediction — a حنكة guess is one-shot for the whole
-// season, so it's worth confirming it actually landed rather than trusting the
-// response alone.
-export async function saveHankaGuess(playerId, guess){
-  const data = await postWithRetry_({ action: 'saveHankaGuess', playerId, guess });
-  if(!data || !data.ok) return data || { ok: false };
-  const verified = await verifyHankaSaved_(playerId, guess);
-  return verified ? data : { ok: false };
+// season, so a slow answer must not be reported as a failed save. Resolves to
+// { ok:true } when saved, the backend's own refusal (e.g. { ok:false, reason:'locked' }),
+// or { ok:false, unknown:true } when nothing could be confirmed either way.
+export async function saveHankaGuess(playerId, guess, opts){
+  const r = await saveAndConfirm_({ action: 'saveHankaGuess', playerId, guess },
+    ms => readBackHanka_(playerId, guess, ms), opts);
+  if(r.status === 'saved') return { ok: true };
+  if(r.status === 'refused') return r.reply;
+  return { ok: false, unknown: r.status === 'unknown' };
 }
 
-async function verifyHankaSaved_(playerId, guess){
+async function readBackHanka_(playerId, guess, ms){
   try {
-    const res = await fetchWithTimeout(API_URL + '?key=hanka');
+    const res = await fetchWithTimeout(API_URL + '?key=hanka&cb=' + Date.now(), {}, ms);
     const data = await res.json();
-    if(!data || data.value == null) return false;
+    if(!data || data.value == null) return null;
     const hanka = JSON.parse(data.value);
     const got = hanka.guesses && hanka.guesses[playerId];
     if(!got) return false;
@@ -178,7 +229,7 @@ async function verifyHankaSaved_(playerId, guess){
       got.assist === guess.assist && got.contributor === guess.contributor &&
       sameSet(got.top3, guess.top3) && sameSet(got.relegated, guess.relegated);
   } catch(e){
-    return false;
+    return null;
   }
 }
 

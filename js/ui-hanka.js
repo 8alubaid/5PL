@@ -193,5 +193,5 @@ window.prHankaSave = async function(){
     return;
   }
   if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
-  prToast(result.reason === 'locked' ? t('hankaLockedToast') : t('savedErr'), true);
+  prToast(result.reason === 'locked' ? t('hankaLockedToast') : (result.unknown ? t('savedUnknown') : t('savedErr')), true);
 };

@@ -196,6 +196,21 @@ function renderRoundLeaderboard(rnd){
   </div>`;
 }
 
+// What sits under the Save button while a save is running or after it couldn't be
+// confirmed. It lives in app state, not on the DOM node: the page re-renders itself
+// every 30s and a save on a slow connection can easily outlast that, which used to
+// quietly reset the button to an active "Save" (and wipe the message) mid-save.
+function saveStatusHTML(rnd){
+  const saving = state.predictSaving;
+  if(saving && saving.roundId === rnd.id) return saving.slow ? `${iconHTML('hourglass')} ${t('savingSlow')}` : '';
+  const n = state.predictSaveNotice;
+  if(n && n.roundId === rnd.id){
+    if(n.kind === 'unknown') return `<div>${iconHTML('warning')} ${t('savedUnknown')}</div><button type="button" class="pr-btn ghost small" style="margin-top:8px" onclick="location.reload()">${iconHTML('refresh')} ${t('refreshPage')}</button>`;
+    if(n.kind === 'failed') return `${iconHTML('x-circle')} ${t('savedErr')}`;
+  }
+  return '';
+}
+
 export function renderPredictTab(){
   if(!state.rounds.length) return `<div class="pr-card"><div class="pr-empty">${t('noRoundsYet')}</div></div>`;
   if(!state.selectedRoundId) state.selectedRoundId = findOpenRoundId();
@@ -216,6 +231,7 @@ export function renderPredictTab(){
   }).join('');
 
   const anyPredictable = rnd.matches.some(m => isMatchPredictable(m));
+  const isSavingThis = !!(state.predictSaving && state.predictSaving.roundId === rnd.id);
   const anyRevealed = rnd.matches.some(m => m.finished || isMatchStarted(m));
   const roundFinished = rnd.matches.every(m => m.finished);
 
@@ -240,21 +256,26 @@ export function renderPredictTab(){
       </div>` : ''}
       ${anyPredictable && state.predictViewMode !== 'summary' ? `
       <div style="margin-top:14px;display:flex;justify-content:flex-end">
-        <button class="pr-btn" id="predict-save-btn" onclick="prSavePredictions('${rnd.id}')">${iconHTML('save')} ${t('savePredictions')}</button>
+        <button class="pr-btn" id="predict-save-btn" ${isSavingThis ? 'disabled' : ''} onclick="prSavePredictions('${rnd.id}')">${isSavingThis ? t('savingPredictions') : `${iconHTML('save')} ${t('savePredictions')}`}</button>
       </div>
-      <div id="predict-msg" class="pr-hint"></div>` : ''}
+      <div id="predict-msg" class="pr-hint">${saveStatusHTML(rnd)}</div>` : ''}
     </div>
     ${roundFinished ? renderRoundLeaderboard(rnd) : ''}`;
 }
 
 window.prSelectRound = function(id){ state.selectedRoundId = id; state.predictDraftRoundId = null; render(); };
 window.prEditPredictions = function(){ state.predictViewMode = 'edit'; render(); };
+// While a save is in flight the picks are frozen — the summary shown afterwards reads
+// from this draft, so a change made mid-save would be displayed as if it had been saved.
 window.prPickOutcome = function(matchId, side){
+  if(state.predictSaving) return;
   if(!state.predictDraft[matchId]) state.predictDraft[matchId] = { outcome:null, isExact:false, exactHome:'', exactAway:'' };
   state.predictDraft[matchId].outcome = side;
+  state.predictSaveNotice = null;
   render();
 };
 window.prToggleExact = function(matchId, checked){
+  if(state.predictSaving){ render(); return; }
   if(checked){
     const rnd = state.rounds.find(r => r.id === state.selectedRoundId);
     if(rnd && lockedExactMatchId(rnd, matchId)){ prToast(t('exactUsedElsewhere'), true); render(); return; }
@@ -267,10 +288,11 @@ window.prToggleExact = function(matchId, checked){
   render();
 };
 window.prSetExactVal = function(matchId, side, val){
-  if(!state.predictDraft[matchId]) return;
+  if(state.predictSaving || !state.predictDraft[matchId]) return;
   state.predictDraft[matchId][side === 'home' ? 'exactHome' : 'exactAway'] = toWest(val);
 };
 window.prSavePredictions = async function(roundId){
+  if(state.predictSaving) return; // a save is already running — a second click must not start another
   const rnd = state.rounds.find(r => r.id === roundId);
   const predictableMatches = rnd.matches.filter(m => isMatchPredictable(m));
   if(!predictableMatches.length){ prToast(t('roundLockedToast'), true); render(); return; }
@@ -288,15 +310,22 @@ window.prSavePredictions = async function(roundId){
       exact: hasExact ? { home: Number(d.exactHome), away: Number(d.exactAway) } : null
     };
   });
-  const btn = document.getElementById('predict-save-btn');
-  const btnOriginalLabel = btn ? btn.textContent : '';
-  if(btn){ btn.disabled = true; btn.textContent = t('savingPredictions'); }
-  document.getElementById('predict-msg').textContent = '';
+  state.predictSaveNotice = null;
+  state.predictSaving = { roundId, slow: false };
+  // After a few seconds of waiting, say so — silence on a slow connection reads as
+  // "frozen" and gets people to reload or tap Save again.
+  const slowTimer = setTimeout(() => {
+    if(state.predictSaving){ state.predictSaving.slow = true; render(); }
+  }, 8000);
+  render();
   // The backend merges just this player's picks into whatever's currently saved,
   // under a lock — so two players saving around the same time (very common right
   // before a round locks) can no longer silently overwrite each other.
-  const ok = await savePrediction(state.session.playerId, matchPredictions);
-  if(ok){
+  let status = 'unknown';
+  try { status = await savePrediction(state.session.playerId, matchPredictions); } catch(e){ status = 'unknown'; }
+  clearTimeout(slowTimer);
+  state.predictSaving = null;
+  if(status === 'saved'){
     const mine = state.predictions[state.session.playerId] ? {...state.predictions[state.session.playerId]} : {};
     Object.assign(mine, matchPredictions);
     state.predictions[state.session.playerId] = mine;
@@ -308,7 +337,10 @@ window.prSavePredictions = async function(roundId){
     prToast(t('savedOk'));
     return;
   }
-  if(btn){ btn.disabled = false; btn.textContent = btnOriginalLabel; }
-  document.getElementById('predict-msg').textContent = t('savedErr');
-  prToast(t('savedErr'), true);
+  // 'failed' = we read it back and the picks really aren't there. 'unknown' = nothing
+  // could be confirmed either way (the connection is slow) — the picks may well have
+  // saved, so that case says to refresh and check rather than claiming an error.
+  state.predictSaveNotice = { roundId, kind: status === 'failed' ? 'failed' : 'unknown' };
+  render();
+  prToast(t(status === 'failed' ? 'savedErr' : 'savedUnknown'), true);
 };
