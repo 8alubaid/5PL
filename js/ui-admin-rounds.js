@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import { t, toAr, toWest, roundDisplayName } from './i18n.js';
 import { esc, uid, prToast, toLocalDatetimeValue, makeEmptyDraftMatches } from './utils.js';
-import { SATEAMS, teamPairHTML, teamSelectOptions, stadiumSelectOptions, matchStadiumOptions, stadiumName, iconHTML } from './data.js';
+import { SATEAMS, teamPairHTML, teamSelectOptions, stadiumSelectOptions, matchStadiumOptions, stadiumName, iconHTML, postponedDayText } from './data.js';
 import { fmtDT } from './scoring.js';
 import { sSet } from './api.js';
 import { render } from './main.js';
@@ -62,7 +62,7 @@ export function renderAdminRounds(){
       <div class="pr-match" style="flex-wrap:wrap">
         <div style="flex:1;min-width:150px">
           <b class="pr-match-title">${teamPairHTML(m.home)} × ${teamPairHTML(m.away)}</b>
-          <div class="pr-match-time">${fmtDT(m.kickoff)} — <span class="pr-tag ${m.finished?'closed':(m.postponed?'postponed':'open')}">${m.finished?t('finished'):(m.postponed?t('postponedLabel'):t('resultPending'))}</span></div>
+          <div class="pr-match-time">${postponedDayText(m) ? `${postponedDayText(m)} · ${t('timeNotSetYet')}` : fmtDT(m.kickoff)} — <span class="pr-tag ${m.finished?'closed':(m.postponed?'postponed':'open')}">${m.finished?t('finished'):(m.postponed?t('postponedLabel'):t('resultPending'))}</span></div>
           ${m.stadium ? `<div class="pr-match-time">${esc(stadiumName(m.stadium))}</div>` : ''}
           <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12.5px;color:var(--text-dim)">
             <input type="checkbox" ${predictOpen?'checked':''} onchange="prToggleMatchPredictOpen('${rnd.id}','${m.id}',this.checked)">
@@ -135,11 +135,14 @@ window.prSaveRoundEdits = async function(roundId){
     const d = state.roundEditDraft[m.id];
     if(!d || !d.home.trim() || !d.away.trim()){ prToast(t('enterBothTeams'), true); return; }
   }
-  const backups = rnd.matches.map(m => ({ id:m.id, home:m.home, away:m.away, kickoff:m.kickoff, homeScore:m.homeScore, awayScore:m.awayScore, finished:m.finished, stadium:m.stadium, predictOpen:m.predictOpen }));
+  const backups = rnd.matches.map(m => ({ id:m.id, home:m.home, away:m.away, kickoff:m.kickoff, kickoffTimeTBD:m.kickoffTimeTBD, homeScore:m.homeScore, awayScore:m.awayScore, finished:m.finished, stadium:m.stadium, predictOpen:m.predictOpen }));
   rnd.matches.forEach(m => {
     const d = state.roundEditDraft[m.id];
     m.home = d.home.trim(); m.away = d.away.trim();
-    m.kickoff = d.kickoff ? new Date(d.kickoff).toISOString() : null;
+    const newKickoff = d.kickoff ? new Date(d.kickoff).toISOString() : null;
+    // typing in a real kickoff replaces a "day known, time not set" placeholder
+    if(newKickoff !== m.kickoff) delete m.kickoffTimeTBD;
+    m.kickoff = newKickoff;
     m.stadium = (d.stadium || '').trim();
     m.predictOpen = d.predictOpen !== false;
     if(d.homeScore !== '' && d.awayScore !== ''){
@@ -150,7 +153,7 @@ window.prSaveRoundEdits = async function(roundId){
   if(!ok){
     rnd.matches.forEach(m => {
       const b = backups.find(x => x.id === m.id);
-      m.home = b.home; m.away = b.away; m.kickoff = b.kickoff; m.homeScore = b.homeScore; m.awayScore = b.awayScore; m.finished = b.finished; m.stadium = b.stadium; m.predictOpen = b.predictOpen;
+      m.home = b.home; m.away = b.away; m.kickoff = b.kickoff; if(b.kickoffTimeTBD) m.kickoffTimeTBD = b.kickoffTimeTBD; m.homeScore = b.homeScore; m.awayScore = b.awayScore; m.finished = b.finished; m.stadium = b.stadium; m.predictOpen = b.predictOpen;
     });
     prToast(t('saveErrRetry'), true);
   } else {

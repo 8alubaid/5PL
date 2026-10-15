@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { esc } from './utils.js';
-import { t } from './i18n.js';
+import { t, toAr } from './i18n.js';
 
 export const SATEAMS = ["الهلال","النصر","الاتحاد","الأهلي","القادسية","الشباب","الفتح","الخليج","التعاون","أبها","نيوم","الفيحاء","الاتفاق","الحزم","الرياض","الدرعية","الخلود","الفيصلي"];
 // Canonical English club names (verified against the official 2025–26 Roshn Saudi League roster).
@@ -132,7 +132,21 @@ export function iconHTML(name, extraClass, extraStyle){
 // stays open for predictions until it actually starts, so the note says so.
 export function postponedNoteHTML(m){
   if(!m || !m.postponed || m.finished) return '';
-  return `<div class="pr-postponed-note">${iconHTML('warning')} <b>${t('postponedLabel')}</b> — ${t(m.kickoff ? 'postponedNoteNewDate' : 'postponedNoteNoDate')}</div>`;
+  const day = postponedDayText(m);
+  const msg = day ? t('postponedNoteDateNoTime', { date: day }) : t(m.kickoff ? 'postponedNoteNewDate' : 'postponedNoteNoDate');
+  return `<div class="pr-postponed-note">${iconHTML('warning')} <b>${t('postponedLabel')}</b> — ${msg}</div>`;
+}
+
+// For a postponed game whose new DAY is known but not its kickoff time
+// (kickoffTimeTBD), the stored kickoff is just the start of that day in Riyadh —
+// showing it as a time would read as a midnight kickoff. This gives the day alone,
+// pinned to Riyadh so a phone set to another timezone can't show the day before.
+export function postponedDayText(m){
+  if(!m || !m.kickoffTimeTBD || !m.kickoff) return '';
+  const d = new Date(m.kickoff);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return toAr(d.toLocaleDateString(state.lang === 'en' ? 'en-US' : 'ar-SA',
+    { calendar: 'gregory', timeZone: 'Asia/Riyadh', day: 'numeric', month: 'long', year: sameYear ? undefined : 'numeric' }));
 }
 
 export function drawBadgeHTML(extraClass){

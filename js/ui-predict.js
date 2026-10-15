@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { t } from './i18n.js';
 import { esc, prToast } from './utils.js';
 import { toAr, toWest, roundDisplayName } from './i18n.js';
-import { teamName, teamPairHTML, teamBadgeHTML, drawBadgeHTML, stadiumName, playerAvatarHTML, iconHTML, postponedNoteHTML } from './data.js';
+import { teamName, teamPairHTML, teamBadgeHTML, drawBadgeHTML, stadiumName, playerAvatarHTML, iconHTML, postponedNoteHTML, postponedDayText } from './data.js';
 import { calcRoundScore, matchOutcome, findOpenRoundId, fmtDT, isMatchPredictable, isMatchStarted, countdownParts } from './scoring.js';
 import { savePrediction } from './api.js';
 import { render } from './main.js';
@@ -33,7 +33,12 @@ function outcomeLabel(side, m){
 
 // A postponed game with no new date yet has nothing to put where the kickoff time
 // normally goes — fmtDT would print a bare dash — the postponed note says it instead.
-const kickoffText = m => (m.postponed && !m.kickoff) ? '' : fmtDT(m.kickoff);
+// One whose new day is known but not its time shows the day only.
+const kickoffText = m => {
+  if(m.postponed && !m.kickoff) return '';
+  const day = postponedDayText(m);
+  return day ? `${day} · ${t('timeNotSetYet')}` : fmtDT(m.kickoff);
+};
 
 // Only one match per round can carry the exact-score bonus. Matches close
 // independently now, so a player can save an exact pick on an early match,
