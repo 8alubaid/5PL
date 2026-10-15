@@ -492,12 +492,32 @@ function roundMatchday_(name) {
   return m ? Number(m[1]) : null;
 }
 
-// What kickoff a game matchesio lists as Postponed should have: none, unless the
-// feed already carries a genuinely future date. A postponed game stays open for
-// predictions until it actually starts, so its stale original date must not count.
-function postponedKickoff_(f) {
-  var d = f.dateTime ? new Date(f.dateTime) : null;
-  return (d && d.getTime() > Date.now()) ? d.toISOString() : null;
+// House rule: a postponed game stays open for predictions until it actually starts.
+// The trap is the ORIGINAL date: matchesio keeps it on a game it lists as Postponed,
+// and before it hears about a postponement at all it simply still shows the old
+// date as "To be played". Either way that old date must never close the game. So a
+// postponed game remembers the date it was moved from (postponedFrom), and only a
+// date different from that one counts as its new kickoff. A new date set by hand
+// (m.kickoffTimeTBD = the day is known but not the time) is left alone until
+// matchesio publishes the real kickoff.
+function applyPostponement_(m, f) {
+  var feedIso = f.dateTime ? new Date(f.dateTime).toISOString() : null;
+  var changed = false;
+  if (!m.postponed && f.status === 'Postponed') {
+    m.postponed = true;
+    m.postponedFrom = m.kickoff || feedIso;
+    m.kickoff = null; // no new date yet -> open until it gets one
+    changed = true;
+  }
+  if (!m.postponed) return changed;
+  // Flagged before postponedFrom existed: then only a future date can be a new one.
+  var isNewDate = !!feedIso && (m.postponedFrom ? feedIso !== m.postponedFrom : new Date(feedIso).getTime() > Date.now());
+  if (isNewDate && (feedIso !== m.kickoff || m.kickoffTimeTBD)) {
+    m.kickoff = feedIso;
+    delete m.kickoffTimeTBD;
+    changed = true;
+  }
+  return changed;
 }
 
 function syncFromMatchesio_() {
@@ -548,27 +568,12 @@ function syncFromMatchesio_() {
         var f = byKey[md + '|' + m.home + '|' + m.away];
         if (!f) return;
 
-        // House rule: a postponed game stays open for predictions until it actually
-        // starts. matchesio keeps the OLD date on a postponed game, which has usually
-        // passed — taking it at face value would close the game — so the kickoff is
-        // cleared while there's no new date and replaced as soon as matchesio has one.
-        // m.postponed is what the site uses to tell players the game was postponed.
-        if (!m.finished && f.status !== 'Played') {
-          var wantPostponed = !!m.postponed;
-          var wantKickoff = m.kickoff || null;
-          if (f.status === 'Postponed') {
-            wantPostponed = true;
-            wantKickoff = postponedKickoff_(f);
-          } else if (m.postponed && f.status === 'To be played' && f.dateTime) {
-            wantKickoff = new Date(f.dateTime).toISOString(); // rescheduled
-          }
-          if (wantPostponed !== !!m.postponed || wantKickoff !== (m.kickoff || null)) {
-            m.postponed = wantPostponed;
-            m.kickoff = wantKickoff;
-            en.dirty = true;
-            result.postponedUpdated++;
-            result.changed = true;
-          }
+        // Postponed games: see applyPostponement_. m.postponed is also what the site
+        // uses to tell players the game was postponed.
+        if (!m.finished && f.status !== 'Played' && applyPostponement_(m, f)) {
+          en.dirty = true;
+          result.postponedUpdated++;
+          result.changed = true;
         }
 
         if (f.status !== 'Played' || !f.result) return;
@@ -577,8 +582,8 @@ function syncFromMatchesio_() {
         var hs = Number(rm[1]), as = Number(rm[2]);
         if (m.finished && m.homeScore === hs && m.awayScore === as) return; // متطابقة أصلًا
         m.homeScore = hs; m.awayScore = as; m.finished = true;
-        // A game that was postponed has no kickoff on file — record when it was played.
-        if (!m.kickoff && f.dateTime) m.kickoff = new Date(f.dateTime).toISOString();
+        // A postponed game may have no kickoff on file, or only a day — record when it was played.
+        if ((!m.kickoff || m.kickoffTimeTBD) && f.dateTime) { m.kickoff = new Date(f.dateTime).toISOString(); delete m.kickoffTimeTBD; }
         en.dirty = true;
         result.scoresUpdated++;
         result.changed = true;
@@ -617,16 +622,17 @@ function syncFromMatchesio_() {
             .slice()
             .sort(function (a, b) { return new Date(a.dateTime) - new Date(b.dateTime); })
             .map(function (f) {
-              var isPostponed = f.status === 'Postponed';
+              var feedIso = f.dateTime ? new Date(f.dateTime).toISOString() : null;
               var match = {
                 id: uid_('mt'),
                 home: f._home, away: f._away,
-                kickoff: isPostponed ? postponedKickoff_(f) : (f.dateTime ? new Date(f.dateTime).toISOString() : null),
+                kickoff: feedIso,
                 stadium: MATCHESIO_TEAM_STADIUM[f._home] || '',
                 predictOpen: true,
                 homeScore: null, awayScore: null, finished: false
               };
-              if (isPostponed) match.postponed = true;
+              // arrives already postponed: its listed date is the old one, so it stays open
+              if (f.status === 'Postponed') { match.postponed = true; match.postponedFrom = feedIso; match.kickoff = null; }
               return match;
             });
           var newRound = { id: uid_('rd'), name: 'الجولة ' + nextMd, matches: newMatches };
